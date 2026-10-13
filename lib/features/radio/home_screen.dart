@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
@@ -75,19 +77,19 @@ class _HomeScreenState extends State<HomeScreen> {
       )),
       if (!mix.isEmpty)
         ExpansionTile(title: const Text('Lagu dalam mix'), children: [
-          LibraryView(tracks: mix.tracks,
+          SizedBox(height: min(400.0, mix.tracks.length * 100.0), child: LibraryView(tracks: mix.tracks,
             explanations: {for (final track in mix.tracks) track.id: mix.explanationFor(track.id)},
-            onPlay: (index) => widget.onAction(() => controller.playTracks(mix.tracks, startIndex: index))),
+            onPlay: (index) => widget.onAction(() => controller.playTracks(mix.tracks, startIndex: index)))),
         ]),
       if (recent.isNotEmpty) ...[
         const Padding(padding: EdgeInsets.all(16), child: Text('Terakhir diputar')),
-        LibraryView(tracks: recent, onPlay: (index) => widget.onAction(
-          () => controller.playTracks(recent, startIndex: index))),
+        SizedBox(height: min(400.0, recent.length * 100.0), child: LibraryView(tracks: recent, onPlay: (index) => widget.onAction(
+          () => controller.playTracks(recent, startIndex: index)))),
       ],
       if (favorites.isNotEmpty) ...[
         const Padding(padding: EdgeInsets.all(16), child: Text('Favorit')),
-        LibraryView(tracks: favorites, onPlay: (index) => widget.onAction(
-          () => controller.playTracks(favorites, startIndex: index))),
+        SizedBox(height: min(400.0, favorites.length * 100.0), child: LibraryView(tracks: favorites, onPlay: (index) => widget.onAction(
+          () => controller.playTracks(favorites, startIndex: index)))),
       ],
       if (controller.playlists.isNotEmpty) ...[
         const Padding(padding: EdgeInsets.all(16), child: Text('Playlist tersimpan')),

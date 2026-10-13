@@ -52,7 +52,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-    animation: Listenable.merge([widget.controller, widget.controller.player]),
+    animation: Listenable.merge([widget.controller, widget.controller.player,
+      widget.controller.player.positionListenable]),
     builder: (context, _) {
       final controller = widget.controller;
       final player = controller.player;
@@ -62,7 +63,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
           .where((track) => track.id == queued.id).firstOrNull ?? queued;
       final total = player.duration.inMilliseconds > 0
           ? player.duration.inMilliseconds : track?.durationMs ?? 0;
-      final position = (_dragMs ?? state.positionMs.toDouble())
+      final position = (_dragMs ?? player.position.inMilliseconds.toDouble())
           .clamp(0, max(1, total)).toDouble();
       return Scaffold(
         appBar: AppBar(title: const Text('Sedang diputar'), actions: [

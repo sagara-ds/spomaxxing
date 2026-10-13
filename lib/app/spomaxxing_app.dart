@@ -71,17 +71,17 @@ class _SpomaxxingAppState extends State<SpomaxxingApp> {
     title: 'Spomaxxing', debugShowCheckedModeBanner: false,
     navigatorKey: _navigator, theme: spomaxxingTheme(),
     home: AnimatedBuilder(
-      animation: Listenable.merge([widget.controller, widget.controller.player]),
+      animation: widget.controller,
       builder: (context, _) {
         final controller = widget.controller;
-        final message = controller.error ?? controller.player.error;
+        final message = controller.error;
         return Scaffold(
           appBar: AppBar(title: const Text('Spomaxxing')),
           body: SafeArea(child: Column(children: [
             if (message != null) MaterialBanner(
               content: Text(message), leading: const Icon(Icons.info_outline),
-              actions: [TextButton(onPressed: () => _action(controller.scan),
-                child: const Text('Pindai ulang'))],
+              actions: [TextButton(onPressed: () => _action(controller.pickAudio),
+                child: const Text('Impor lagu'))],
             ),
             Expanded(child: IndexedStack(index: _tab, children: [
               HomeScreen(controller: controller, onAction: _action),
@@ -90,7 +90,8 @@ class _SpomaxxingAppState extends State<SpomaxxingApp> {
               ImportScreen(controller: controller, onAction: _action),
               SettingsScreen(controller: controller, onAction: _action),
             ])),
-            MiniPlayer(controller: controller, onAction: _action),
+            AnimatedBuilder(animation: controller.player, builder: (context, _) =>
+              MiniPlayer(controller: controller, onAction: _action)),
           ])),
           bottomNavigationBar: NavigationBar(
             selectedIndex: _tab, onDestinationSelected: (index) => setState(() => _tab = index),

@@ -21,6 +21,7 @@ class PlayerController extends ChangeNotifier {
     _handler.duration.addListener(_onValueChanged);
     _handler.error.addListener(_onValueChanged);
     _handler.loading.addListener(_onValueChanged);
+    _handler.position.addListener(_onPositionChanged);
     _timer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (_dirty) unawaited(flushSnapshot());
     });
@@ -36,11 +37,16 @@ class PlayerController extends ChangeNotifier {
   String? _persistenceError;
 
   QueueState get state => _handler.state.value;
-  Duration get position => Duration(milliseconds: state.positionMs);
+  Duration get position => _handler.position.value;
+  ValueListenable<Duration> get positionListenable => _handler.position;
   Duration get duration => _handler.duration.value;
   String? get error => _handler.error.value ?? _persistenceError;
   bool get isLoading => _handler.loading.value;
-  Map<String, Object?> get snapshot => state.toJson();
+  Map<String, Object?> get snapshot => {
+    ...state.toJson(), 'positionMs': position.inMilliseconds,
+  };
+
+  void _onPositionChanged() { _dirty = true; }
 
   Future<void> playTracks(
     Iterable<Track> tracks, {
@@ -117,6 +123,7 @@ class PlayerController extends ChangeNotifier {
     _handler.duration.removeListener(_onValueChanged);
     _handler.error.removeListener(_onValueChanged);
     _handler.loading.removeListener(_onValueChanged);
+    _handler.position.removeListener(_onPositionChanged);
     super.dispose();
   }
 }

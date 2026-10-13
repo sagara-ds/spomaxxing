@@ -27,12 +27,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(16), children: [
     Text('Audio dan penyimpanan', style: Theme.of(context).textTheme.titleLarge),
     const SizedBox(height: 12),
-    const Text('Pindai perangkat meminta izin audio Android. Tambah berkas menggunakan '
-      'pemilih sistem dan menyalin audio ke penyimpanan privat aplikasi.'),
+    const Text('Impor lagu pilihan menggunakan pemilih berkas sistem. Pilih folder musikmu, '
+      'lalu tandai lagu yang ingin disimpan di koleksi privat aplikasi.'),
     const SizedBox(height: 12),
     Wrap(spacing: 8, runSpacing: 8, children: [
-      FilledButton.icon(onPressed: widget.controller.busy ? null : () => widget.onAction(widget.controller.scan),
-        icon: const Icon(Icons.refresh), label: const Text('Pindai ulang')),
       OutlinedButton.icon(onPressed: widget.controller.busy ? null : () => widget.onAction(widget.controller.pickAudio),
         icon: const Icon(Icons.audio_file), label: const Text('Tambah berkas')),
     ]),

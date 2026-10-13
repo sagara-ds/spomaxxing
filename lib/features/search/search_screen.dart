@@ -27,7 +27,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final tracks = controller.tracks.where((track) => query.isEmpty ||
       [track.title, track.artist, track.album].any((text) => text.toLowerCase().contains(query)) ||
       MoodCatalog.normalizeTags(track.tags).contains(mood)).toList();
-    return ListView(padding: const EdgeInsets.only(bottom: 16), children: [
+    return CustomScrollView(slivers: [SliverToBoxAdapter(child: Column(children: [
       Padding(padding: const EdgeInsets.all(16), child: TextField(
         controller: _query, onChanged: (_) => setState(() {}),
         decoration: InputDecoration(labelText: 'Cari lagu, artis, album, atau tag',
@@ -48,7 +48,8 @@ class _SearchScreenState extends State<SearchScreen> {
                 const SnackBar(content: Text('Belum ada tag yang cocok. Edit tag di Koleksi.')));
             }
           }), icon: const Icon(Icons.radio), label: Text('Putar radio $mood'))),
-      LibraryView(tracks: tracks,
+      ])),
+      LibraryView(sliver: true, tracks: tracks,
         emptyMessage: query.isEmpty ? 'Koleksi masih kosong. Tambahkan berkas melalui Koleksi.'
           : 'Tidak ada hasil untuk pencarian ini.',
         onPlay: (index) => widget.onAction(() => controller.playTracks(tracks, startIndex: index)),

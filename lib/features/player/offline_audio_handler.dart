@@ -50,7 +50,10 @@ class OfflineAudioHandler extends BaseAudioHandler {
       }),
     );
     _subscriptions.add(
-      _player.positionStream.listen((value) {
+      _player.createPositionStream(
+        minPeriod: const Duration(milliseconds: 250),
+        maxPeriod: const Duration(milliseconds: 500),
+      ).listen((value) {
         if (_loadedToken != state.value.playbackToken ||
             _loading.value ||
             _pendingSeek != null ||
@@ -58,7 +61,6 @@ class OfflineAudioHandler extends BaseAudioHandler {
           return;
         }
         position.value = value;
-        state.value = QueueReducer.seek(state.value, value.inMilliseconds);
       }),
     );
     _subscriptions.add(
@@ -211,7 +213,8 @@ class OfflineAudioHandler extends BaseAudioHandler {
   Future<void> skipToPrevious() {
     _assertOpen();
     _userAction();
-    return _replace(QueueReducer.previous(state.value));
+    return _replace(QueueReducer.previous(
+      QueueReducer.seek(state.value, position.value.inMilliseconds)));
   }
 
   @override
@@ -277,8 +280,11 @@ class OfflineAudioHandler extends BaseAudioHandler {
 
   Future<void> _replace(QueueState next, {bool seek = false}) {
     _assertOpen();
-    state.value = next;
+    if (!seek && next.playbackToken == state.value.playbackToken) {
+      next = QueueReducer.seek(next, position.value.inMilliseconds);
+    }
     position.value = Duration(milliseconds: next.positionMs);
+    state.value = next;
     if (_loadedToken != next.playbackToken) {
       duration.value = next.currentTrack?.duration ?? Duration.zero;
     }

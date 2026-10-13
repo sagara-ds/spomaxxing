@@ -25,7 +25,6 @@ class AppController extends ChangeNotifier {
   List<Track> tracks = [];
   List<LocalPlaylist> playlists = [];
   bool busy = false;
-  bool permissionDenied = false;
   String? error;
   StreamSubscription<ImportJob>? _imports;
 
@@ -85,7 +84,8 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> reload() async {
-    tracks = await repository.loadTracks();
+    tracks = (await repository.loadTracks())
+        .where((track) => !track.id.startsWith('media:')).toList();
     playlists = await repository.loadPlaylists();
     notifyListeners();
   }
@@ -103,13 +103,6 @@ class AppController extends ChangeNotifier {
     }
     finally { busy = false; notifyListeners(); }
   }
-
-  Future<void> scan() => _work(() async {
-    permissionDenied = !await platform.requestAudioPermission();
-    if (permissionDenied) return;
-    await repository.reconcileMediaStore(await platform.scanAudio());
-    await reload();
-  });
 
   Future<void> pickAudio() => _work(() async {
     final result = await platform.pickAudio();

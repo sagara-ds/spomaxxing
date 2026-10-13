@@ -45,7 +45,8 @@ class LibraryView extends StatelessWidget {
     this.selectedIds,
     this.onSelection,
     this.explanations = const {},
-    this.emptyMessage = 'Belum ada lagu. Pindai perangkat atau tambahkan berkas audio.',
+    this.emptyMessage = 'Belum ada lagu. Impor berkas audio pilihanmu.',
+    this.sliver = false,
   });
 
   final List<Track> tracks;
@@ -57,19 +58,18 @@ class LibraryView extends StatelessWidget {
   final ValueChanged<Track>? onSelection;
   final Map<String, String> explanations;
   final String emptyMessage;
+  final bool sliver;
 
   @override
   Widget build(BuildContext context) {
     if (tracks.isEmpty) {
-      return Padding(
+      final empty = Padding(
         padding: const EdgeInsets.all(24),
         child: Text(emptyMessage, textAlign: TextAlign.center),
       );
+      return sliver ? SliverToBoxAdapter(child: empty) : empty;
     }
-    return Column(
-      children: [
-        for (var index = 0; index < tracks.length; index++)
-          ListTile(
+    Widget row(BuildContext context, int index) => ListTile(
             key: ValueKey('track:${tracks[index].id}'),
             leading: selectedIds == null
                 ? TrackCover(track: tracks[index])
@@ -82,7 +82,7 @@ class LibraryView extends StatelessWidget {
             subtitle: Text([
               tracks[index].artist,
               if (tracks[index].album.isNotEmpty) tracks[index].album,
-              if (!tracks[index].isAvailable) 'Berkas tidak tersedia · pindai ulang',
+              if (!tracks[index].isAvailable) 'Berkas tidak tersedia · impor ulang',
               if (explanations[tracks[index].id]?.isNotEmpty ?? false)
                 explanations[tracks[index].id]!,
               if (tracks[index].tags.isNotEmpty)
@@ -112,9 +112,10 @@ class LibraryView extends StatelessWidget {
                         const PopupMenuItem(value: 'radio', child: Text('Radio dari lagu ini')),
                     ],
                   ),
-          ),
-      ],
-    );
+          );
+    return sliver
+        ? SliverList.builder(itemCount: tracks.length, itemBuilder: row)
+        : ListView.builder(itemCount: tracks.length, itemBuilder: row);
   }
 }
 
@@ -197,17 +198,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
         groups.putIfAbsent(key, () => []).add(track);
       }
     }
-    return ListView(padding: const EdgeInsets.only(bottom: 16), children: [
+    final header = <Widget>[
       Padding(padding: const EdgeInsets.all(16), child: Wrap(spacing: 8, runSpacing: 8, children: [
-        FilledButton.icon(onPressed: controller.busy ? null : () => widget.onAction(controller.scan),
-          icon: const Icon(Icons.refresh), label: const Text('Pindai perangkat')),
-        OutlinedButton.icon(onPressed: controller.busy ? null : () => widget.onAction(controller.pickAudio),
-          icon: const Icon(Icons.audio_file), label: const Text('Tambah berkas')),
+        FilledButton.icon(onPressed: controller.busy ? null : () => widget.onAction(controller.pickAudio),
+          icon: const Icon(Icons.audio_file), label: const Text('Impor lagu pilihan')),
       ])),
-      if (controller.permissionDenied)
-        const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text(
-          'Izin audio belum diberikan. Tekan Pindai perangkat untuk meminta izin lagi, '
-          'atau gunakan Tambah berkas. Jika izin diblokir, aktifkan melalui pengaturan Android.')),
+      const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text(
+        'Buka folder musikmu di pemilih berkas, lalu pilih satu atau beberapa lagu. Audio lain tidak dipindai.')),
       if (controller.busy) const LinearProgressIndicator(semanticsLabel: 'Memuat koleksi'),
       Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Wrap(spacing: 8, children: [
         for (final filter in ['Lagu', 'Favorit', 'Album', 'Artis', 'Playlist'])
@@ -224,11 +221,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
               context, controller, controller.tracks.where((track) => _selected.contains(track.id)).toList(),
               widget.onAction), child: Text('Edit tag (${_selected.length})')),
         ])),
-      if (_filter == 'Playlist') ...[
+    ];
+    final entries = groups.entries.toList();
+    return CustomScrollView(slivers: [
+      SliverToBoxAdapter(child: Column(children: header)),
+      if (_filter == 'Playlist')
         if (controller.playlists.isEmpty)
-          const Padding(padding: EdgeInsets.all(24), child: Text('Belum ada playlist. Simpan radio mix dari Beranda.')),
-        for (final playlist in controller.playlists)
-          ListTile(leading: const Icon(Icons.queue_music), title: Text(playlist.name),
+          const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(24),
+            child: Text('Belum ada playlist. Simpan radio mix dari Beranda.')))
+        else SliverList.builder(itemCount: controller.playlists.length, itemBuilder: (context, index) {
+          final playlist = controller.playlists[index];
+          return ListTile(leading: const Icon(Icons.queue_music), title: Text(playlist.name),
             subtitle: Text('${playlist.trackIds.length} lagu · '
               '${playlist.trackIds.where((id) => controller.tracks.any((track) => track.id == id && track.isAvailable)).length} tersedia offline'),
             onTap: () => widget.onAction(() => controller.playPlaylist(playlist)),
@@ -244,17 +247,19 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     await controller.repository.deletePlaylist(playlist.id); await controller.reload();
                   });
                 }
-              })),
-      ] else if (groups.isNotEmpty) ...[
-        for (final entry in groups.entries)
-          ExpansionTile(title: Text(entry.key), subtitle: Text('${entry.value.length} lagu'),
-            children: [LibraryView(tracks: entry.value,
+              }));
+        })
+      else if (entries.isNotEmpty)
+        SliverList.builder(itemCount: entries.length, itemBuilder: (context, index) {
+          final entry = entries[index];
+          return ExpansionTile(title: Text(entry.key), subtitle: Text('${entry.value.length} lagu'),
+            children: [SizedBox(height: 320, child: LibraryView(tracks: entry.value,
               onPlay: (index) => widget.onAction(() => controller.playTracks(entry.value, startIndex: index)),
-              onEditTags: (track) => editTrackTags(context, controller, [track], widget.onAction))]),
-      ] else
-        LibraryView(tracks: tracks,
+              onEditTags: (track) => editTrackTags(context, controller, [track], widget.onAction)))]);
+        })
+      else LibraryView(sliver: true, tracks: tracks,
           emptyMessage: _filter == 'Favorit' ? 'Belum ada lagu favorit.'
-            : 'Belum ada lagu. Pindai perangkat atau tambahkan berkas audio.',
+            : 'Belum ada lagu. Impor berkas audio pilihanmu.',
           selectedIds: _selecting ? _selected : null, onSelection: _select,
           onPlay: (index) => widget.onAction(() => controller.playTracks(tracks, startIndex: index)),
           onFavorite: (track) => widget.onAction(() => controller.toggleFavorite(track)),
