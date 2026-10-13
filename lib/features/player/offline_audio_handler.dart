@@ -183,10 +183,10 @@ class OfflineAudioHandler extends BaseAudioHandler {
   }
 
   @override
-  Future<void> seek(Duration value) {
+  Future<void> seek(Duration position) {
     _assertOpen();
     _userAction();
-    final next = QueueReducer.seek(state.value, value.inMilliseconds);
+    final next = QueueReducer.seek(state.value, position.inMilliseconds);
     return _replace(next, seek: true);
   }
 
@@ -236,10 +236,10 @@ class OfflineAudioHandler extends BaseAudioHandler {
   );
 
   @override
-  Future<void> setShuffleMode(AudioServiceShuffleMode mode) => _replace(
+  Future<void> setShuffleMode(AudioServiceShuffleMode shuffleMode) => _replace(
     QueueReducer.setShuffle(
       state.value,
-      mode != AudioServiceShuffleMode.none,
+      shuffleMode != AudioServiceShuffleMode.none,
       seed: DateTime.now().millisecondsSinceEpoch,
     ),
   );
@@ -255,10 +255,10 @@ class OfflineAudioHandler extends BaseAudioHandler {
   }
 
   @override
-  Future<void> setRepeatMode(AudioServiceRepeatMode mode) => _replace(
+  Future<void> setRepeatMode(AudioServiceRepeatMode repeatMode) => _replace(
     QueueReducer.setRepeat(
       state.value,
-      switch (mode) {
+      switch (repeatMode) {
         AudioServiceRepeatMode.one => RepeatMode.one,
         AudioServiceRepeatMode.all || AudioServiceRepeatMode.group =>
           RepeatMode.all,

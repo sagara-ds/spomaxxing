@@ -13,7 +13,7 @@
 | compileSdk / targetSdk / minSdk | 36 / 35 / 26 |
 | Android NDK | 27.0.12077973, bawaan konfigurasi Flutter |
 
-Dependensi langsung memakai versi persis di `pubspec.yaml`. Workflow menyimpan lockfile hasil resolusi sebagai artifact `dependency-lock`. Setelah resolusi pertama berhasil, `pubspec.lock` perlu dikomit untuk mengunci dependensi transitif.
+Dependensi langsung memakai versi persis di `pubspec.yaml`, dan `pubspec.lock` mengunci dependensi transitif dari resolusi CI yang berhasil. Workflow memakai `flutter pub get --enforce-lockfile` dan menyimpan salinan lockfile sebagai artifact `dependency-lock`.
 
 Pasang Flutter 3.35.4, JDK 17, Android SDK platform 36/build tools, lalu setujui lisensi SDK. Flutter menulis lokasi mesin ke `android/local.properties`; file itu tidak dikomit.
 

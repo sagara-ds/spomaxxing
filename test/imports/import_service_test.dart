@@ -17,7 +17,7 @@ Map<String, dynamic> _entry(String id, {String? checksum}) => {
   'url': 'https://media.example.com/$id.mp3',
   'license': 'CC BY 4.0',
   'source': 'https://artist.example.com/releases/$id',
-  if (checksum != null) 'sha256': checksum,
+  'sha256': ?checksum,
 };
 
 String _manifest(List<Map<String, dynamic>> tracks) => jsonEncode({'version': 1, 'name': 'Playlist contoh', 'tracks': tracks});

@@ -239,9 +239,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
                     FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Hapus')),
                   ]));
-                if (remove == true) await widget.onAction(() async {
-                  await controller.repository.deletePlaylist(playlist.id); await controller.reload();
-                });
+                if (remove == true) {
+                  await widget.onAction(() async {
+                    await controller.repository.deletePlaylist(playlist.id); await controller.reload();
+                  });
+                }
               })),
       ] else if (groups.isNotEmpty) ...[
         for (final entry in groups.entries)

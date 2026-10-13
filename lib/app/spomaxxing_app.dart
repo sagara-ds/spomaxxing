@@ -37,7 +37,9 @@ class _SpomaxxingAppState extends State<SpomaxxingApp> {
       await action();
     } on ImportOfflineException catch (error) {
       final context = _navigator.currentContext;
-      if (!mounted || context == null) return;
+      if (context == null || !context.mounted) {
+        return;
+      }
       final retry = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
         title: const Text('Tidak ada internet'),
         content: Text(error.message),
@@ -49,7 +51,9 @@ class _SpomaxxingAppState extends State<SpomaxxingApp> {
       if (retry == true && mounted) await _action(action);
     } catch (error) {
       final context = _navigator.currentContext;
-      if (!mounted || context == null) return;
+      if (context == null || !context.mounted) {
+        return;
+      }
       final message = switch (error) {
         ImportException exception => exception.message,
         PlatformException exception => exception.message ?? 'Operasi audio belum dapat diselesaikan.',

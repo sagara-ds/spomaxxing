@@ -43,8 +43,10 @@ class _SearchScreenState extends State<SearchScreen> {
         Padding(padding: const EdgeInsets.all(16), child: OutlinedButton.icon(
           onPressed: () => widget.onAction(() async {
             final mix = await controller.playRadio(query);
-            if (mix.isEmpty && context.mounted) ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Belum ada tag yang cocok. Edit tag di Koleksi.')));
+            if (mix.isEmpty && context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Belum ada tag yang cocok. Edit tag di Koleksi.')));
+            }
           }), icon: const Icon(Icons.radio), label: Text('Putar radio $mood'))),
       LibraryView(tracks: tracks,
         emptyMessage: query.isEmpty ? 'Koleksi masih kosong. Tambahkan berkas melalui Koleksi.'

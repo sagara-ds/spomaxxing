@@ -65,8 +65,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 id: 'playlist:mix:${DateTime.now().microsecondsSinceEpoch}',
                 name: 'Mix $_mood', trackIds: mix.tracks.map((track) => track.id).toList()));
               await controller.reload();
-              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Mix tersimpan di Koleksi.')));
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Mix tersimpan di Koleksi.')));
+              }
             }), icon: const Icon(Icons.playlist_add), label: const Text('Simpan mix')),
           ]),
         ],
