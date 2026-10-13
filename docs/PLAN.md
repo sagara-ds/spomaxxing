@@ -195,3 +195,9 @@ Kode versi awal Flutter/Kotlin telah dibuat dan dipush ke GitHub: koleksi lokal,
 [CI Android #2](https://github.com/sagara-ds/spomaxxing/actions/runs/38424252024) lulus analisis Flutter, 61 tes, dan build APK debug. Lockfile transitif dikomit. Detail hasil dan artifact ada di [BUILD.md](BUILD.md).
 
 Integrasi Spotify/SpotMate, transfer yang dijamin berjalan di background, sampul tertanam, pagination koleksi besar, build release untuk distribusi, serta pengujian perangkat masih belum selesai. Tahapan rencana di atas tetap menjadi arah pengembangan; hasil CI tidak menggantikan pembuktian runtime Android.
+
+## 12. Revisi berdasarkan pengujian pengguna, 0.1.1
+
+Pengguna melaporkan freeze saat scan dan jank ketika playback, lalu memilih alur impor lagu secara eksplisit. Keputusan ini menggantikan rencana scan seluruh perangkat: folder khusus dibuka lewat pemilih berkas, lalu pengguna memilih lagu. Audio lain tidak dimasukkan otomatis.
+
+Posisi playback dipisahkan dari state antrean dan rebuild global. Daftar koleksi/pencarian dimuat secara lazy. [CI 0.1.1](https://github.com/sagara-ds/spomaxxing/actions/runs/38432386519) lulus analisis, 62 tes, serta build debug dan release. Catatan di [PERFORMANCE.md](PERFORMANCE.md) mencatat batas validasi perangkat dan unduhan Spotify.

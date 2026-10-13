@@ -23,23 +23,24 @@ flutter pub get
 dart format lib test
 flutter analyze
 flutter test
-flutter build apk --debug
-flutter install
+flutter build apk --release
+flutter install --release
 ```
 
 APK debug berada di `build/app/outputs/flutter-apk/app-debug.apk`. Workflow GitHub menjalankan analisis, tes, dan build, kemudian menyimpan artifact `spomaxxing-debug-apk`. Ini APK pengembangan. Konfigurasi release saat ini juga memakai signing debug; distribusi store membutuhkan keystore dan konfigurasi signing di luar repository.
 
 ## Hasil CI terverifikasi
 
-[Run Android #2](https://github.com/sagara-ds/spomaxxing/actions/runs/38424252024) berhasil pada 13 Oktober 2026 untuk source commit `2b5875c14e6f4726fc2889c396d810dc0b272133`:
+[CI versi 0.1.1](https://github.com/sagara-ds/spomaxxing/actions/runs/38432386519) berhasil pada 13 Oktober 2026 untuk source commit `11bce14430c08244a839d3854ecad12c55d3b29e`:
 
 - `flutter pub get --enforce-lockfile`: berhasil.
 - `flutter analyze`: `No issues found`.
-- `flutter test`: **61 tes lulus**.
-- `flutter build apk --debug`: berhasil, termasuk integrasi Kotlin/Flutter/plugin Android.
-- Artifact `spomaxxing-debug-apk`: ZIP 70.362.366 byte, berisi `app-debug.apk`.
+- `flutter test`: **62 tes lulus**, termasuk koleksi lazy 10.000 lagu.
+- `flutter build apk --debug` dan `flutter build apk --release`: berhasil.
+- Artifact release ZIP 24.270.624 byte, berisi `app-release.apk` sebesar 51.492.698 byte.
+- Manifest APK diperiksa: versi 0.1.1+2, minSdk26/targetSdk35, tanpa READ_MEDIA_AUDIO atau READ_EXTERNAL_STORAGE.
 
-[Unduh artifact APK](https://github.com/sagara-ds/spomaxxing/actions/runs/38424252024/artifacts/11828062742). Retensi artifact berakhir 27 Oktober 2026; workflow dapat dijalankan kembali dari tab Actions setelah itu. SHA-256 ZIP: `24d7b40f7ad42ce2a7a6dcf9283168ee9724cecbb1e534588f36b37cfca8fab5`.
+[Unduh APK release](https://github.com/sagara-ds/spomaxxing/actions/runs/38432386519/artifacts/11831178715). Retensi artifact berakhir 27 Oktober 2026. SHA-256 ZIP: `e2a76d75fb2c28c0ea3b292c77bc625cb2caf28e4b7f2273c38fa0a82ee03dbd`. SHA-256 APK: `4bd117557763e486d7c3f8846a79c17938b81f869d78e47453775bed30ed7026`.
 
 APK adalah build pengembangan, bukan rilis store. Source aplikasi yang diuji tidak berubah pada commit dokumentasi hasil CI ini. Pengujian perangkat berikut tetap diperlukan.
 
@@ -58,10 +59,12 @@ Tes mencakup identitas URI lokal, queue token, shuffle/repeat/riwayat, radio/tag
 ## Uji Android yang masih diperlukan
 
 1. Pasang APK di Android 8/API 26 dan perangkat Android terbaru; aktifkan mode pesawat sebelum pembukaan pertama.
-2. Tolak izin scan; pastikan pemilih berkas tetap berfungsi. Berikan izin dan pindai MP3, AAC/M4A, FLAC, WAV, serta Ogg buatan sendiri atau berlisensi jelas.
+2. Buka folder musik lewat pemilih berkas; pilih MP3, AAC/M4A, FLAC, WAV, dan Ogg buatan sendiri atau berlisensi jelas. Pastikan hanya lagu pilihan masuk koleksi, tanpa permintaan izin scan perangkat.
 3. Cari lagu/artis/album, tandai favorit dan suasana, simpan radio, lalu buka kembali aplikasi. Periksa antrean pulih dalam keadaan jeda.
 4. Putar dengan layar mati; uji notifikasi, lock screen, headset terlepas, audio focus/interupsi, seek, auto-next, repeat, shuffle, dan berkas yang dihapus.
 5. Impor satu URL HTTPS audio yang diizinkan dan manifest uji. Putuskan koneksi; pekerjaan harus dijeda dan file `.part` tidak muncul sebagai lagu siap putar. Retry mengulang hanya lagu belum selesai.
 6. Aktifkan mode pesawat setelah impor; putar lagu/playlist parsial. Menekan unduh saat offline harus menampilkan alert tanpa menghentikan playback lokal.
 
 Pemeriksaan cloud dan APK yang berhasil dibangun belum membuktikan semua perilaku Android/vendor atau codec perangkat.
+
+Untuk menguji kelancaran, gunakan APK release. Catatan perubahan dan risiko penggantian signing key development ada di [PERFORMANCE.md](PERFORMANCE.md).

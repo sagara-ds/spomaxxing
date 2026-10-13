@@ -1,5 +1,7 @@
 # Bridge Android untuk koleksi lokal
 
+Sejak 0.1.1, alur aplikasi hanya menggunakan impor pilihan melalui `pickAudio`, validasi, dan informasi penyimpanan/koneksi. Pemindaian dan permintaan izin audio di bawah adalah kontrak legacy yang masih tersimpan untuk kompatibilitas pengujian; UI tidak menggunakannya dan manifest aplikasi tidak lagi mendeklarasikan izin baca seluruh koleksi audio. Gunakan pemilih berkas sistem untuk menambahkan lagu.
+
 `MainActivity` mewarisi `AudioServiceActivity`. Integrasi pada channel
 `dev.spomaxxing/library` berada di `LibraryBridge.kt`; query, salinan berkas,
 validasi decoder, dan informasi penyimpanan berjalan pada executor tunggal.
