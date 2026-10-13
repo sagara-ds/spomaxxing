@@ -51,13 +51,15 @@ Pengguna telah menyetujui internet saat diperlukan untuk impor dan unduh di Andr
 - Tangani audio focus, panggilan, dan headset terlepas; resume hanya sesuai status pemutaran sebelum interupsi.
 - Simpan antrean dan posisi untuk pemulihan setelah aplikasi dibuka kembali. Pemutaran tidak dimulai sendiri setelah force-stop atau reboot.
 
-### Impor tautan playlist dan unduhan
+### Impor tautan lagu/playlist dan unduhan
 
-- Tempel tautan, baca daftar lagu melalui akses yang didukung, cocokkan dengan koleksi lokal, lalu unduh audio yang tersedia dari sumber yang mengizinkannya.
+- Tempel tautan lagu atau playlist, baca metadata melalui akses yang didukung, cocokkan dengan koleksi lokal, lalu unduh audio yang tersedia dari sumber yang mengizinkannya.
+- Lagu tunggal yang selesai otomatis muncul di Koleksi. Playlist mendukung pilihan lagu atau unduh semua yang tersedia dengan status per lagu.
 - Tampilkan playlist di Koleksi dengan status per lagu. Playlist yang baru terunduh sebagian hanya memutar audio yang sudah tersedia lokal saat offline.
 - Tampilkan alert saat unduh dilakukan tanpa internet; koneksi terputus menjeda pekerjaan tanpa mengganggu pemutaran lokal.
 - Lagu yang gagal atau tidak memiliki sumber tidak diganti diam-diam dengan cover/remix. Pengguna dapat memperbaiki pencocokan atau memasukkan berkas sendiri.
 - Detail provider, penyimpanan, autentikasi, dan pengujian mengikuti [rencana impor playlist](PLAYLIST_IMPORT.md); akses API dan sumber audio belum diverifikasi end-to-end.
+- SpotMate menjadi referensi alur tempel tautan yang disarankan pengguna. Integrasi langsung dengan layanan tersebut belum ditetapkan karena halaman/API dan dukungan unduhnya belum terverifikasi.
 
 ### Pencarian suasana dan radio mix
 
@@ -77,7 +79,7 @@ Pengguna telah menyetujui internet saat diperlukan untuk impor dan unduh di Andr
 | Beranda | Suasana, terakhir diputar, favorit, dan mix tersimpan |
 | Cari | Pencarian lokal dengan hasil lagu/artis/album dan pintasan suasana |
 | Koleksi | Lagu, album, artis, playlist, impor, dan status pemindaian |
-| Impor playlist | Tempel tautan, pratinjau, sumber audio, progres per lagu, dan alert koneksi |
+| Impor lagu/playlist | Tempel tautan, pratinjau, sumber audio, progres per lagu, dan alert koneksi |
 | Radio mix | Suasana atau lagu awal, alasan kecocokan, jumlah lagu, dan tombol putar/shuffle |
 | Sedang diputar | Sampul, judul/artis, progres, kontrol, favorit, repeat, dan shuffle |
 | Antrean | Lagu saat ini, urutan berikutnya, hapus, dan susun ulang |

@@ -1,20 +1,40 @@
-# Usulan impor playlist dan unduhan untuk Spomaxxing
+# Rencana impor lagu, playlist, dan unduhan untuk Spomaxxing
 
 ## Tujuan
 
-Pengguna menempel tautan playlist atau radio, aplikasi memperoleh daftar lagu yang dapat diakses, lalu audio yang tersedia dari sumber yang mengizinkan pengunduhan disimpan ke koleksi Spomaxxing. Setelah impor selesai, playlist dan lagu dapat diputar tanpa jaringan.
+Pengguna menempel tautan lagu, playlist, atau radio, aplikasi memperoleh metadata yang dapat diakses, lalu audio yang tersedia dari sumber yang mengizinkan pengunduhan disimpan ke koleksi Spomaxxing. Setelah impor selesai, playlist dan lagu dapat diputar tanpa jaringan.
 
 Status: pengguna memilih impor dan unduh langsung di Android, dengan internet saat dibutuhkan dan alert saat mencoba mengunduh tanpa koneksi. [Rencana utama](PLAN.md) sudah mengikuti keputusan ini. Belum ada downloader, integrasi API, atau audio yang diunduh.
 
 ## Batas teknis yang perlu dipahami
 
 - Memperoleh isi tautan dan mengunduh berkas membutuhkan internet. Yang dapat dijamin offline setelah impor adalah koleksi, pencarian lokal, radio lokal, dan playback.
-- Tautan Spotify mengidentifikasi playlist; tautan itu tidak menyediakan berkas audio yang dapat diunduh oleh aplikasi umum.
+- Tautan Spotify mengidentifikasi lagu atau playlist; tautan itu tidak menyediakan berkas audio yang dapat diunduh oleh aplikasi umum.
 - README `spotify-dl` milik SathyaBhat menjelaskan bahwa alatnya mengambil metadata Spotify, kemudian menggunakan `yt-dlp` untuk memperoleh audio dari sumber lain. README spotDL juga menjelaskan pencarian audio melalui YouTube.
 - Hasil pencocokan sumber lain dapat berbeda versi, misalnya live, cover, remix, clean, atau rekaman dengan durasi berbeda. Metadata Spotify tidak membuktikan identitas ataupun izin unduh suatu berkas.
 - Tools berbasis Python, `yt-dlp`, dan FFmpeg bukan plugin Flutter yang tinggal dipasang. Membundelnya pada Android memerlukan pengujian kompatibilitas, ukuran paket, lisensi, pembaruan extractor, serta perilaku background tersendiri.
 - Isi playlist privat, radio yang dipersonalisasi, dan playlist milik platform mungkin tidak tersedia melalui akses API yang diberikan kepada aplikasi. Dukungan tiap jenis tautan perlu dibuktikan melalui API resmi; tidak ada janji bahwa setiap tautan Spotify dapat diimpor.
 - Pengunduhan mengikuti izin sumber audio dan ketentuan layanan yang digunakan. Tidak direncanakan ekstraksi cache Spotify, pembukaan DRM, atau akses dengan mengambil kredensial aplikasi lain.
+
+## Referensi SpotMate dan dukungan jenis tautan
+
+Pengguna menyarankan [SpotMate](https://spotmate.online/en1) sebagai contoh sistem tempel tautan dan unduh. Spomaxxing dapat mengadopsi alur penggunaan tersebut untuk lagu tunggal dan playlist. Integrasi layanan SpotMate sebagai provider belum dipilih atau dibuktikan.
+
+| Input | Perilaku Spomaxxing yang direncanakan |
+| --- | --- |
+| Tautan lagu | Pratinjau judul/artis, cocokkan audio lokal, unduh satu berkas bila tersedia, lalu tampilkan di Koleksi |
+| Tautan playlist | Pratinjau daftar, pilih lagu atau semua yang tersedia, tampilkan progres per lagu, lalu simpan playlist lokal |
+| Tautan radio berbentuk playlist | Impor snapshot daftar yang dapat diakses; pembaruan berikutnya membutuhkan internet |
+| Tautan tidak didukung/akses ditolak | Jelaskan kegagalan tanpa membuat playlist yang tampak selesai |
+
+- Resolver awal membedakan bentuk tautan Spotify `track/{id}` dan `playlist/{id}`. Validasi URL terstruktur dan jenis resource; dukungan domain/tautan pendek lain ditambahkan setelah diuji.
+- Lagu tunggal otomatis masuk Koleksi setelah selesai; pembuatan playlist untuk satu lagu bersifat opsional.
+- Untuk playlist, tombol **Unduh semua yang tersedia** tetap menampilkan lagu yang gagal/tidak memiliki sumber. Status selesai tidak berarti semua rekaman Spotify berhasil diperoleh.
+- UI mengunduh dan menyimpan berkas ke penyimpanan aplikasi; URL streaming atau halaman yang dibuka lewat WebView tidak dihitung sebagai audio lokal.
+- Sebelum memasang adapter SpotMate, buktikan API yang didukung, izin penggunaan layanan dan sumber audio, cara autentikasi, batas penggunaan, serta transfer audio end-to-end di Android.
+- Parsing HTML atau endpoint internal situs belum menjadi kontrak provider yang dapat diandalkan. Provider dipisahkan dari pemutar agar kegagalan layanan tidak mengganggu audio yang sudah lokal.
+- Dalam riset ini, permintaan halaman SpotMate ditolak proxy dengan HTTP 403, termasuk setelah izin jaringan turn diberikan. Penolakan terjadi sebelum halaman berhasil dibaca; ini bukan bukti bahwa situsnya rusak atau bahwa situs tersebut mendukung/tidak mendukung playlist.
+- Fitur aktual SpotMate, dukungan lagu/playlist, sumber audio, API, dan ketentuan layanan masih belum terverifikasi. Yang ditambahkan ke rencana adalah alur Spomaxxing, bukan klaim fitur situs tersebut.
 
 ## Keputusan produk dan alternatif
 
@@ -42,21 +62,22 @@ Jumlah data unduhan mengikuti jumlah lagu, ukuran audio, dan sampul yang diambil
 
 ## Alur yang diinginkan
 
-1. Pengguna menempel tautan; aplikasi memvalidasi host, jenis tautan, dan identitas playlist. Parameter berbagi tidak diperlakukan sebagai kredensial.
-2. Provider metadata mengambil nama playlist dan daftar lagu melalui akses yang didukung, atau pengguna menyediakan manifest daftar lagu sebagai alternatif.
+1. Pengguna menempel tautan; aplikasi memvalidasi host, jenis tautan, serta identitas lagu atau playlist. Parameter berbagi tidak diperlakukan sebagai kredensial.
+2. Provider metadata mengambil satu lagu atau nama playlist dan daftar lagu melalui akses yang didukung, atau pengguna menyediakan manifest daftar lagu sebagai alternatif.
 3. Aplikasi mencocokkan lagu dengan koleksi lokal terlebih dahulu, menggunakan ID/rekaman yang diketahui, judul, artis, dan durasi. Kecocokan meragukan ditampilkan untuk konfirmasi.
 4. Lagu yang belum ada dicocokkan dengan sumber audio yang mengizinkan unduh. Sumber tidak didukung atau lagu tidak tersedia ditandai sebagai gagal/menunggu, bukan diganti diam-diam.
 5. Unduhan yang memenuhi persyaratan dapat langsung masuk antrean. Pencocokan alternatif yang ambigu memerlukan pilihan pengguna.
 6. Tampilkan kemajuan per lagu dan playlist: sudah lokal, menunggu, mengunduh, memverifikasi, selesai, gagal, atau dibatalkan.
-7. Setelah sebuah berkas selesai dan dapat dibaca pemutar, masukkan ke database dan playlist lokal secara atomik. Playlist mempertahankan urutan asal dan status lagu yang belum berhasil.
-8. Playlist langsung muncul di Koleksi. Lagu yang selesai dapat diputar selama lagu lain masih diproses; status "tersedia offline" hanya berlaku bagi audio yang sudah tersimpan.
+7. Setelah sebuah berkas selesai dan dapat dibaca pemutar, masukkan ke database dan playlist lokal jika inputnya playlist. Publikasi hasil mengikuti transaksi dan pengelolaan berkas yang aman. Playlist mempertahankan urutan asal dan status lagu yang belum berhasil.
+8. Lagu tunggal atau playlist langsung muncul di Koleksi. Lagu yang selesai dapat diputar selama lagu lain masih diproses; status "tersedia offline" hanya berlaku bagi audio yang sudah tersimpan.
 9. Playlist disimpan sebagai snapshot. Jika radio atau playlist asal berubah, pengguna dapat memperbaruinya secara eksplisit saat online; snapshot lokal tetap bisa diputar offline.
 
 ## Arsitektur Android yang direncanakan
 
 ```mermaid
 flowchart LR
-    Link[Tautan playlist] --> Metadata[Provider metadata yang didukung]
+    Link[Tautan lagu atau playlist] --> Resolver[Resolver jenis tautan]
+    Resolver --> Metadata[Provider metadata yang didukung]
     Metadata --> Match[Pencocokan koleksi lokal]
     Match --> Local[(Audio lokal dan SQLite)]
     Match --> Source[Provider audio yang mengizinkan unduh]
@@ -68,7 +89,7 @@ flowchart LR
 
 - Flutter/Dart: formulir tempel tautan, pratinjau daftar lagu, pemilihan kandidat jika ambigu, status unduhan, dan pemutaran lokal.
 - Kotlin: transfer yang sesuai kemampuan Android/targetSdk, notifikasi progres, pembatalan, dan pengelolaan berkas. Evaluasi WorkManager atau mekanisme transfer yang didukung setelah menguji batas foreground service dan pekerjaan panjang pada Android terbaru.
-- Pisahkan `PlaylistMetadataProvider` dari `AuthorizedAudioProvider`. Downloader tidak diasumsikan bisa memperoleh audio hanya karena judul tersedia di Spotify.
+- Pisahkan `MusicMetadataProvider` untuk lagu/playlist dari `AuthorizedAudioProvider`. Downloader tidak diasumsikan bisa memperoleh audio hanya karena judul tersedia di Spotify. Simpan identitas referensi metadata terpisah dari identitas berkas audio hasil pencocokan.
 - Bila API metadata menggunakan autentikasi pengguna, gunakan alur public-client yang didukung, seperti OAuth PKCE jika tersedia. Jangan menaruh client secret di APK; kebutuhan backend ditentukan oleh operasi yang benar-benar harus digunakan.
 - Gunakan koneksi TLS yang diverifikasi. Jangan mematikan pemeriksaan sertifikat untuk membuat extractor bekerja.
 - Simpan progres pekerjaan secara lokal dan pulihkan status sesudah proses dihentikan. Resume byte hanya dipakai bila server mendukungnya dan identitas berkas tetap cocok; selebihnya ulangi transfer secara aman.
@@ -94,8 +115,8 @@ Jika memakai arsip, importer membatasi ukuran/jumlah berkas serta menolak path a
 
 ## Validasi sebelum fitur dinyatakan didukung
 
-1. Buktikan akses metadata playlist contoh melalui konfigurasi resmi yang tersedia. Bedakan playlist berhasil, privat/tidak diizinkan, dan jenis yang tidak didukung.
-2. Gunakan sumber audio milik sendiri atau berlisensi jelas untuk uji unduhan end-to-end. Buktikan playlist muncul dan audio dapat diputar.
+1. Buktikan akses metadata satu lagu dan playlist contoh melalui konfigurasi resmi yang tersedia. Bedakan playlist berhasil, privat/tidak diizinkan, dan jenis yang tidak didukung.
+2. Gunakan sumber audio milik sendiri atau berlisensi jelas untuk uji unduhan end-to-end. Buktikan lagu tunggal dan playlist muncul di Koleksi serta audio dapat diputar.
 3. Uji lagu sudah lokal, judul sama dengan rekaman berbeda, pencocokan ambigu, serta kegagalan sebagian playlist.
 4. Putuskan jaringan saat transfer; periksa resume/retry, pembatalan, restart proses, dan ruang penyimpanan penuh.
 5. Setelah impor, aktifkan mode pesawat, buka kembali aplikasi, lalu putar playlist, shuffle, dan tunggu auto-next. Pastikan playback tidak bergantung pada URL daring.
@@ -107,4 +128,5 @@ Jika memakai arsip, importer membatasi ukuran/jumlah berkas serta menolak path a
 - [README spotify-dl (SathyaBhat)](https://github.com/SathyaBhat/spotify-dl): penjelasan metadata Spotify dan penggunaan yt-dlp berhasil dibaca saat perencanaan.
 - [README spotDL](https://github.com/spotDL/spotify-downloader): penjelasan sumber audio YouTube, Python, dan kebutuhan FFmpeg berhasil dibaca saat perencanaan.
 - [Referensi Get Playlist Spotify](https://developer.spotify.com/documentation/web-api/reference/get-playlist): belum berhasil diambil dari lingkungan ini; proxy mengembalikan HTTP 403. Hak akses dan dukungan API terbaru belum diverifikasi.
+- [SpotMate](https://spotmate.online/en1): referensi pengguna; halaman ditolak proxy HTTP 403 sehingga dukungan layanan belum dapat diverifikasi. Tidak ada permintaan unduhan atau pengujian playlist/lagu pada layanan ini.
 - Riset ini memeriksa dokumentasi, bukan menjalankan downloader. Belum ada pengujian akses playlist contoh atau unduhan audio; memilih tool tidak berarti fitur sudah terbukti bekerja.

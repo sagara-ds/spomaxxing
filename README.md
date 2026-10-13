@@ -19,4 +19,4 @@ Repositori saat ini berisi perencanaan. Kode aplikasi, dependensi Flutter, dan b
 
 Lihat [rencana implementasi](docs/PLAN.md) untuk arsitektur, fitur, urutan pekerjaan, dan kriteria penerimaan.
 
-Lihat [rencana impor tautan playlist dan unduhan](docs/PLAYLIST_IMPORT.md) untuk alur tempel tautan, status unduhan, alert offline, serta batas integrasi Spotify dan spotify-dl. Pengguna telah memilih impor langsung di Android dengan internet saat dibutuhkan.
+Lihat [rencana impor lagu/playlist dan unduhan](docs/PLAYLIST_IMPORT.md) untuk alur tempel tautan, status unduhan, alert offline, serta evaluasi Spotify, spotify-dl, dan referensi SpotMate. Pengguna telah memilih impor langsung di Android dengan internet saat dibutuhkan. Integrasi SpotMate belum terverifikasi.
