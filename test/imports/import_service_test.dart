@@ -67,9 +67,13 @@ class _Harness {
   int connectionChecks = 0;
   int decoderChecks = 0;
   Future<Map<String, dynamic>> Function(Uri)? decoder;
+  Future<ResolvedImportAudio> Function(ImportCandidate)? resolver;
+  Future<ImportPreview> Function(ImportLink)? previewProvider;
 
   late final service = ImportService(
     transport: transport,
+    resolveYoutubeAudio: (candidate) => resolver!(candidate),
+    metadataPreview: previewProvider,
     hasConnection: () async { connectionChecks++; return connected; },
     storageDirectory: () async => directory,
     validateAudio: (uri) async {
@@ -185,6 +189,38 @@ void main() {
       expect(await File.fromUri(harness.savedAudio.single.fileUri).readAsBytes(), bytes);
       expect(harness.playlists, isEmpty);
       expect(await temporary.list().where((file) => file.path.endsWith('.part')).isEmpty, isTrue);
+    });
+
+    test('YouTube retry resolves fresh audio without persisting expiring stream URL', () async {
+      var resolutions = 0;
+      final candidate = ImportCandidate(id: 'youtube:abcdefghijk', title: 'Pilihan', artist: 'Kanal',
+        url: Uri.parse('https://www.youtube.com/watch?v=abcdefghijk'), provider: 'youtube',
+        license: 'Izin pengguna', source: 'Video yang dipilih pengguna');
+      harness.resolver = (_) async {
+        resolutions++;
+        if (resolutions == 1) throw const SocketException('disconnected');
+        return ResolvedImportAudio(extension: 'm4a', response: _response(
+          Uri.parse('https://r1.googlevideo.com/videoplayback?expire=123'), [1, 2, 3], type: 'audio/mp4'));
+      };
+      final first = await harness.service.download(ImportPreview(sourceUrl: candidate.url.toString(),
+        name: 'Pilihan', tracks: [candidate], isPlaylist: false));
+      expect(first.status, ImportJobStatus.paused);
+      final retried = await harness.service.retry(first);
+      expect(resolutions, 2);
+      expect(retried.status, ImportJobStatus.completed);
+      expect(harness.savedAudio.single.fileUri.path, endsWith('.m4a'));
+      expect(jsonEncode(retried.toJson()), isNot(contains('expire=123')));
+      expect(harness.transport.requested, isEmpty);
+    });
+
+    test('unmatched Spotify candidates cannot enter download queue', () async {
+      final candidate = ImportCandidate(id: 'pending', title: 'Judul', artist: 'Artis',
+        url: Uri.parse('https://open.spotify.com/track/0123456789abcdefghijkl'),
+        provider: 'spotify', license: 'pending', source: 'Spotify');
+      await expectLater(harness.service.download(ImportPreview(sourceUrl: candidate.url.toString(),
+        name: 'Daftar', tracks: [candidate], isPlaylist: true)), throwsA(isA<ImportException>()));
+      expect(harness.savedJobs, isEmpty);
+      expect(harness.savedAudio, isEmpty);
     });
 
     test('partial playlist retains failures and source order', () async {

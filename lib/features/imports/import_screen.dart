@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import 'import_models.dart';
+import 'youtube_source.dart';
 
 /// The network entry point: every preview or transfer requires a user action.
 class ImportScreen extends StatefulWidget {
@@ -64,8 +65,40 @@ class _ImportScreenState extends State<ImportScreen> {
     final preview = _preview;
     if (preview == null || _selectedIds.isEmpty) return Future<void>.value();
     final selected = Set<String>.of(_selectedIds);
+    if (!_hasPermission && preview.tracks.any((track) => track.provider != 'direct')) {
+      return widget.onAction(() async { throw const ImportException('Konfirmasikan izin mengunduh audio pilihan.'); });
+    }
     return _run(() => widget.controller.downloadImport(preview, ids: selected));
   }
+
+  Future<void> _chooseSource(ImportCandidate candidate) => _run(() async {
+    final selected = await showDialog<YoutubeResult>(context: context,
+      builder: (context) => _YoutubePicker(candidate: candidate, controller: widget.controller));
+    if (selected == null || !mounted || _preview == null) return;
+    if (!_hasPermission) throw const ImportException('Centang izin unduh, lalu pilih sumber YouTube.');
+    setState(() => _preview = ImportPreview(sourceUrl: _preview!.sourceUrl,
+      name: _preview!.name, isPlaylist: _preview!.isPlaylist,
+      tracks: _preview!.tracks.map((track) => track.id == candidate.id ? selected.forTrack(candidate) : track).toList()));
+  });
+
+  Future<void> _searchManual() => _run(() async {
+    final input = _urlController.text.trim();
+    final query = input.startsWith('https://') ? '' : input;
+    final seed = ImportCandidate(id: 'manual', title: query, artist: '',
+      url: Uri.https('www.youtube.com', '/'), license: 'pending', source: 'Pencarian manual');
+    final selected = await showDialog<YoutubeResult>(context: context,
+      builder: (context) => _YoutubePicker(candidate: seed, controller: widget.controller));
+    if (selected == null || !mounted) return;
+    if (!_hasPermission) throw const ImportException('Konfirmasikan izin unduh sebelum memilih audio.');
+    final candidate = ImportCandidate(id: 'youtube:${selected.id}', title: selected.title,
+      artist: selected.channel, durationMs: selected.durationMs, url: selected.url,
+      provider: 'youtube', license: 'Izin unduh dikonfirmasi pengguna', source: selected.url.toString());
+    setState(() {
+      _preview = ImportPreview(sourceUrl: selected.url.toString(), name: selected.title,
+        tracks: [candidate], isPlaylist: false);
+      _selectedIds..clear()..add(candidate.id);
+    });
+  });
 
   Future<void> _retry(ImportJob job) => _run(() async {
     await widget.controller.importer.retry(job);
@@ -123,7 +156,7 @@ class _ImportScreenState extends State<ImportScreen> {
                       hintText: 'https://contoh.com/lagu.mp3',
                       prefixIcon: Icon(Icons.link),
                       border: OutlineInputBorder(),
-                      helperText: 'URL HTTPS berkas audio atau playlist .json',
+                      helperText: 'Spotify, YouTube, berkas audio HTTPS, atau playlist .json',
                       helperMaxLines: 2,
                     ),
                     onChanged: (_) => _invalidatePreview(),
@@ -139,12 +172,11 @@ class _ImportScreenState extends State<ImportScreen> {
                     controlAffinity: ListTileControlAffinity.leading,
                     value: _hasPermission,
                     title: const Text('Saya memiliki izin mengunduh audio ini'),
-                    subtitle: const Text('Diperlukan untuk tautan audio langsung.'),
+                    subtitle: const Text('Diperlukan sebelum mengunduh audio langsung atau sumber YouTube pilihan.'),
                     onChanged: busy
                         ? null
                         : (value) {
-                            _hasPermission = value ?? false;
-                            _invalidatePreview();
+                            setState(() => _hasPermission = value ?? false);
                           },
                   ),
                   const SizedBox(height: 8),
@@ -161,6 +193,8 @@ class _ImportScreenState extends State<ImportScreen> {
                     label: const Text('Pratinjau tautan'),
                   ),
                   const SizedBox(height: 16),
+                  OutlinedButton.icon(onPressed: busy ? null : _searchManual,
+                    icon: const Icon(Icons.search), label: const Text('Cari judul di YouTube')),
                   Text(
                     'Format audio: MP3, M4A, AAC, WAV, FLAC, OGG, OPUS, dan MP4. '
                     'Playlist JSON menyertakan judul, artis, sumber, dan lisensi setiap lagu.',
@@ -168,7 +202,7 @@ class _ImportScreenState extends State<ImportScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Tautan Spotify belum dapat diunduh. Gunakan sumber audio yang mengizinkan unduhan.',
+                    'Spotify dibaca sebagai metadata publik (eksperimental). Pilih sumber YouTube per lagu; hasil tidak diganti otomatis dengan cover/remix.',
                     style: theme.textTheme.bodySmall,
                   ),
                 ],
@@ -221,6 +255,9 @@ class _ImportScreenState extends State<ImportScreen> {
   Widget _buildPreview(BuildContext context, ImportPreview preview, bool busy) {
     final theme = Theme.of(context);
     final allSelected = _selectedIds.length == preview.tracks.length;
+    final ready = preview.tracks.where((track) => _selectedIds.contains(track.id))
+      .every((track) => track.provider != 'spotify');
+    final needsPermission = preview.tracks.any((track) => track.provider != 'direct');
     return Card(
       margin: EdgeInsets.zero,
       child: Column(
@@ -253,8 +290,10 @@ class _ImportScreenState extends State<ImportScreen> {
             ),
           ),
           const Divider(height: 1),
-          for (final candidate in preview.tracks)
-            CheckboxListTile(
+          SizedBox(height: 400, child: ListView.builder(
+            itemCount: preview.tracks.length, itemBuilder: (context, index) {
+              final candidate = preview.tracks[index];
+              return CheckboxListTile(
               value: _selectedIds.contains(candidate.id),
               controlAffinity: ListTileControlAffinity.leading,
               title: Text(candidate.title),
@@ -266,6 +305,10 @@ class _ImportScreenState extends State<ImportScreen> {
                   const SizedBox(height: 4),
                   Text('Lisensi: ${candidate.license}'),
                   Text('Sumber: ${candidate.source}'),
+                  if (candidate.provider == 'spotify' || candidate.provider == 'youtube')
+                    TextButton.icon(onPressed: busy ? null : () => _chooseSource(candidate),
+                      icon: const Icon(Icons.search), label: Text(candidate.provider == 'spotify'
+                        ? 'Pilih hasil YouTube' : 'Ganti sumber YouTube')),
                 ],
               ),
               onChanged: busy
@@ -277,15 +320,17 @@ class _ImportScreenState extends State<ImportScreen> {
                         _selectedIds.remove(candidate.id);
                       }
                     }),
-            ),
+            ); })),
           Padding(
             padding: const EdgeInsets.all(16),
             child: FilledButton.icon(
-              onPressed: busy || _selectedIds.isEmpty ? null : _downloadSelected,
+              onPressed: busy || _selectedIds.isEmpty || !ready || (needsPermission && !_hasPermission) ? null : _downloadSelected,
               icon: const Icon(Icons.download),
               label: Text('Unduh ${_selectedIds.length} lagu terpilih'),
             ),
           ),
+          if (!ready) const Padding(padding: EdgeInsets.all(16),
+            child: Text('Pilih sumber YouTube untuk lagu terpilih, atau batalkan pilihan lagu yang belum memiliki sumber.')),
         ],
       ),
     );
@@ -460,4 +505,71 @@ String _bytes(int bytes) {
   if (bytes < 1024) return '$bytes B';
   if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KiB';
   return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MiB';
+}
+
+class _YoutubePicker extends StatefulWidget {
+  const _YoutubePicker({required this.candidate, required this.controller});
+  final ImportCandidate candidate;
+  final AppController controller;
+  @override
+  State<_YoutubePicker> createState() => _YoutubePickerState();
+}
+
+class _YoutubePickerState extends State<_YoutubePicker> {
+  late final TextEditingController _query;
+  List<YoutubeResult> _results = [];
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _query = TextEditingController(text: '${widget.candidate.title} ${widget.candidate.artist}');
+    WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted && _query.text.trim().isNotEmpty) _search(); });
+  }
+
+  Future<void> _search() async {
+    if (_busy) return;
+    setState(() { _busy = true; _error = null; });
+    try {
+      final results = await widget.controller.searchYoutube(_query.text);
+      if (mounted) setState(() => _results = results);
+    } catch (error) {
+      if (mounted) setState(() => _error = error is ImportException
+        ? error.message : 'YouTube belum dapat diakses. Coba lagi nanti.');
+    } finally { if (mounted) setState(() => _busy = false); }
+  }
+
+  String _duration(int ms) => '${ms ~/ 60000}:${((ms ~/ 1000) % 60).toString().padLeft(2, '0')}';
+
+  @override
+  void dispose() { _query.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    scrollable: true,
+    title: const Text('Pilih sumber YouTube'),
+    content: SizedBox(width: double.maxFinite, height: 440, child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('${widget.candidate.title} — ${widget.candidate.artist}', maxLines: 3, overflow: TextOverflow.ellipsis),
+        if (widget.candidate.durationMs > 0) Text('Durasi asal: ${_duration(widget.candidate.durationMs)}'),
+        TextField(controller: _query, enabled: !_busy,
+          decoration: const InputDecoration(labelText: 'Cari judul dan artis'),
+          onSubmitted: (_) => _search()),
+        TextButton.icon(onPressed: _busy ? null : _search,
+          icon: const Icon(Icons.search), label: const Text('Cari YouTube')),
+        if (_busy) const LinearProgressIndicator(),
+        Expanded(child: _error != null ? SingleChildScrollView(child: Text(_error!))
+          : _results.isEmpty ? const Center(child: Text('Belum ada hasil. Coba kata pencarian lain.'))
+          : ListView.builder(itemCount: _results.length, itemBuilder: (context, index) {
+            final result = _results[index];
+            return ListTile(title: Text(result.title),
+              subtitle: Text('${result.channel}\nDurasi ${_duration(result.durationMs)}'),
+              onTap: _busy ? null : () => Navigator.pop(context, result));
+          })),
+        const Text('Periksa judul, kanal, durasi, dan versi rekaman sebelum memilih.'),
+      ],
+    )),
+    actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal'))],
+  );
 }

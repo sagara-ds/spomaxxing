@@ -1,7 +1,7 @@
 name: spomaxxing
 description: Pemutar musik Android dengan koleksi, radio suasana, dan audio offline.
 publish_to: none
-version: 0.1.1+2
+version: 0.2.0+3
 
 environment:
   sdk: '>=3.9.0 <4.0.0'
@@ -12,7 +12,8 @@ dependencies:
     sdk: flutter
   audio_service: 0.18.18
   audio_session: 0.2.2
-  crypto: 3.0.6
+  crypto: 3.0.7
+  youtube_explode_dart: 3.1.0
   just_audio: 0.10.5
   path: 1.9.1
   path_provider: 2.1.5

@@ -1,4 +1,4 @@
-enum ImportLinkKind { audio, manifest, spotifyTrack, spotifyPlaylist }
+enum ImportLinkKind { audio, manifest, spotifyTrack, spotifyPlaylist, youtubeVideo, youtubePlaylist }
 
 enum ImportTrackStatus {
   queued,
@@ -28,6 +28,8 @@ class ImportCandidate {
     required this.license,
     required this.source,
     this.sha256,
+    this.provider = 'direct',
+    this.durationMs = 0,
   });
 
   final String id;
@@ -37,6 +39,8 @@ class ImportCandidate {
   final String license;
   final String source;
   final String? sha256;
+  final String provider;
+  final int durationMs;
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -45,6 +49,8 @@ class ImportCandidate {
     'url': url.toString(),
     'license': license,
     'source': source,
+    'provider': provider,
+    'durationMs': durationMs,
     if (sha256 != null) 'sha256': sha256,
   };
 
@@ -56,6 +62,8 @@ class ImportCandidate {
     license: json['license'] as String,
     source: json['source'] as String,
     sha256: json['sha256'] as String?,
+    provider: json['provider'] as String? ?? 'direct',
+    durationMs: (json['durationMs'] as num?)?.toInt() ?? 0,
   );
 }
 

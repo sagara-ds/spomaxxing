@@ -53,6 +53,21 @@ ImportLink parseImportLink(String input) {
     return ImportLink(uri, segments[0] == 'track' ? ImportLinkKind.spotifyTrack : ImportLinkKind.spotifyPlaylist, resourceId: segments[1]);
   }
   final extension = audioExtension(uri);
+  if ({'youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be'}.contains(uri.host.toLowerCase())) {
+    final segments = uri.pathSegments;
+    final videoId = uri.host.toLowerCase() == 'youtu.be'
+        ? (segments.length == 1 ? segments.first : null)
+        : uri.path == '/watch' ? uri.queryParameters['v']
+        : segments.length == 2 && {'shorts', 'embed'}.contains(segments.first) ? segments[1] : null;
+    if (videoId != null && RegExp(r'^[A-Za-z0-9_-]{11}$').hasMatch(videoId)) {
+      return ImportLink(uri, ImportLinkKind.youtubeVideo, resourceId: videoId);
+    }
+    final playlist = uri.queryParameters['list'];
+    if (uri.path == '/playlist' && playlist != null && RegExp(r'^[A-Za-z0-9_-]{10,100}$').hasMatch(playlist)) {
+      return ImportLink(uri, ImportLinkKind.youtubePlaylist, resourceId: playlist);
+    }
+    throw const ImportUnsupportedException('Gunakan tautan video atau playlist YouTube yang lengkap.');
+  }
   if (extension == 'json') return ImportLink(uri, ImportLinkKind.manifest);
   if (supportedAudioExtensions.contains(extension)) return ImportLink(uri, ImportLinkKind.audio);
   throw const ImportUnsupportedException('Gunakan URL langsung berkas audio (.mp3, .m4a, .aac, .wav, .flac, .ogg, .opus, .mp4) atau manifest playlist .json. Halaman web dan tautan pendek belum didukung.');
@@ -178,6 +193,12 @@ typedef ValidateImportedAudio = Future<Map<String, dynamic>> Function(Uri fileUr
 typedef SaveImportedAudio = Future<String> Function(ImportedAudio audio);
 typedef SaveImportedPlaylist = Future<void> Function(String id, String name, List<String> trackIds);
 
+class ResolvedImportAudio {
+  const ResolvedImportAudio({required this.response, required this.extension});
+  final ImportResponse response;
+  final String extension;
+}
+
 /// A serialized foreground queue. Paused work retries from byte zero explicitly.
 class ImportService {
   ImportService({
@@ -190,6 +211,8 @@ class ImportService {
     required this.saveJob,
     ImportTransport? transport,
     DateTime Function()? now,
+    this.metadataPreview,
+    this.resolveYoutubeAudio,
   }) : _transport = transport ?? HttpImportTransport(), _now = now ?? DateTime.now;
 
   final Future<bool> Function() hasConnection;
@@ -200,6 +223,8 @@ class ImportService {
   final Future<List<ImportJob>> Function() loadJobs;
   final Future<void> Function(ImportJob job) saveJob;
   final ImportTransport _transport;
+  final Future<ImportPreview> Function(ImportLink link)? metadataPreview;
+  final Future<ResolvedImportAudio> Function(ImportCandidate candidate)? resolveYoutubeAudio;
   final DateTime Function() _now;
   final _changes = StreamController<ImportJob>.broadcast();
   final Map<String, ImportJob> _jobs = {};
@@ -238,7 +263,17 @@ class ImportService {
     _ensureOpen();
     final link = parseImportLink(input);
     if (link.kind == ImportLinkKind.spotifyTrack || link.kind == ImportLinkKind.spotifyPlaylist) {
-      throw const ImportUnsupportedException('Tautan Spotify dikenali, tetapi akses provider resmi belum dikonfigurasi. Spotify tidak menyediakan berkas audio melalui tautan ini. Gunakan URL audio yang mengizinkan unduhan atau manifest playlist JSON.');
+      if (metadataPreview == null) {
+        throw const ImportUnsupportedException('Provider metadata Spotify belum tersedia.');
+      }
+      await _requireConnection();
+      return metadataPreview!(link);
+    }
+    if (link.kind == ImportLinkKind.youtubeVideo || link.kind == ImportLinkKind.youtubePlaylist) {
+      if (metadataPreview == null) throw const ImportUnsupportedException('Provider YouTube belum tersedia.');
+      if (!directDownloadPermission) throw const ImportException('Konfirmasikan izin mengunduh audio ini.');
+      await _requireConnection();
+      return metadataPreview!(link);
     }
     if (link.kind == ImportLinkKind.audio && !directDownloadPermission) {
       throw const ImportException('Konfirmasikan bahwa Anda memiliki izin mengunduh berkas audio ini.');
@@ -341,7 +376,16 @@ class ImportService {
     final ids = <String>{};
     for (final candidate in candidates) {
       validateImportUri(candidate.url);
-      if (!ids.add(candidate.id) || candidate.id.trim().isEmpty || candidate.license.trim().isEmpty || candidate.source.trim().isEmpty || !supportedAudioExtensions.contains(audioExtension(candidate.url))) {
+      if (candidate.provider == 'spotify') {
+        throw const ImportException('Pilih sumber YouTube untuk setiap lagu yang ingin diunduh.');
+      }
+      if (candidate.provider == 'youtube') {
+        final link = parseImportLink(candidate.url.toString());
+        if (link.kind != ImportLinkKind.youtubeVideo || resolveYoutubeAudio == null) {
+          throw const ImportException('Sumber video YouTube belum tersedia.');
+        }
+      }
+      if (!{'direct', 'youtube'}.contains(candidate.provider) || !ids.add(candidate.id) || candidate.id.trim().isEmpty || candidate.license.trim().isEmpty || candidate.source.trim().isEmpty || (candidate.provider == 'direct' && !supportedAudioExtensions.contains(audioExtension(candidate.url)))) {
         throw const ImportException('Lagu impor membutuhkan identitas, sumber, izin unduh, dan URL audio yang valid.');
       }
       if (candidate.sha256 != null && !RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(candidate.sha256!)) throw const ImportException('Checksum audio tidak valid.');
@@ -462,7 +506,9 @@ class ImportService {
 
   Future<ImportedAudio> _downloadAudio(ImportJob job, int index, Directory directory, void Function(ImportTrackProgress) update) async {
     final candidate = job.tracks[index].candidate;
-    final response = await _transport.get(candidate.url);
+    final resolved = candidate.provider == 'youtube'
+        ? await resolveYoutubeAudio!(candidate) : null;
+    final response = resolved?.response ?? await _transport.get(candidate.url);
     _abort = response.abort;
     final temp = File('${directory.path}/${job.id}-$index.part');
     IOSink? fileSink;
@@ -470,8 +516,9 @@ class ImportService {
       _ensureNotCancelled();
       _validateResponse(response, maxAudioBytes);
       final type = response.contentType?.split(';').first.toLowerCase();
-      final extension = audioExtension(candidate.url);
-      const audioTypes = {'audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/aacp', 'audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave', 'audio/flac', 'audio/x-flac', 'audio/ogg', 'audio/opus', 'application/ogg'};
+      final extension = resolved?.extension ?? audioExtension(candidate.url);
+      if (resolved != null && !{'m4a', 'webm'}.contains(extension)) throw const ImportException('Container audio YouTube tidak didukung.');
+      const audioTypes = {'audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/aacp', 'audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave', 'audio/flac', 'audio/x-flac', 'audio/ogg', 'audio/opus', 'application/ogg', 'audio/webm'};
       if (!audioTypes.contains(type) && !(type == 'application/octet-stream' && supportedAudioExtensions.contains(extension))) {
         throw const ImportException('Server tidak mengirim tipe audio yang didukung.');
       }

@@ -11,6 +11,7 @@ import '../core/radio/radio_mixer.dart';
 import '../data/library_repository.dart';
 import '../data/platform_library.dart';
 import '../features/imports/import_service.dart';
+import '../features/imports/youtube_source.dart';
 import '../features/player/player_controller.dart';
 
 /// Coordinates local data; the only network path is an explicit import action.
@@ -27,10 +28,13 @@ class AppController extends ChangeNotifier {
   bool busy = false;
   String? error;
   StreamSubscription<ImportJob>? _imports;
+  final YoutubeSource youtube = YoutubeSource();
 
   static Future<ImportService> createImporter(
     LibraryRepository repository, PlatformLibrary platform,
   ) async => ImportService(
+    metadataPreview: YoutubeSource().preview,
+    resolveYoutubeAudio: YoutubeSource().resolve,
     hasConnection: platform.hasConnection,
     storageDirectory: () async => Directory(path.join(
       (await getApplicationSupportDirectory()).path, 'imports')),
@@ -160,6 +164,11 @@ class AppController extends ChangeNotifier {
 
   Future<ImportPreview> previewImport(String link, {bool permission = false}) =>
       importer.preview(link, directDownloadPermission: permission);
+
+  Future<List<YoutubeResult>> searchYoutube(String query) async {
+    if (!await platform.hasConnection()) throw const ImportOfflineException();
+    return youtube.search(query);
+  }
 
   Future<void> downloadImport(ImportPreview preview, {Set<String>? ids}) async {
     await importer.download(preview, selectedTrackIds: ids);
