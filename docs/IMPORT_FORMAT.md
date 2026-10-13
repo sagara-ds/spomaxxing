@@ -1,6 +1,6 @@
 # Impor versi awal
 
-Tab Impor mendukung URL HTTPS langsung berkas MP3/M4A/AAC/WAV/FLAC/Ogg/Opus/MP4, atau URL HTTPS manifest `.json`. Format akhir bergantung pada decoder perangkat. Tautan halaman web dan URL pendek belum didukung. Spotify track/playlist dikenali secara terstruktur tetapi provider belum dikonfigurasi.
+Tab Impor mendukung URL HTTPS langsung berkas MP3/M4A/AAC/WAV/FLAC/Ogg/Opus/MP4, URL HTTPS manifest `.json`, serta tautan video/playlist YouTube. Metadata Spotify publik dibaca secara eksperimental, lalu pengguna memilih sumber YouTube per lagu. Lihat [mesin unduhan](YOUTUBE_DOWNLOADER.md) untuk alur dan batas verifikasi. Format akhir mengikuti decoder perangkat; halaman web lain dan URL pendek Spotify belum didukung.
 
 Untuk URL audio langsung, pengguna mengonfirmasi izin unduh. Manifest membutuhkan `source` dan `license` untuk setiap rekaman. Jangan memakai URL contoh di bawah sebagai sumber audio; unggah berkas uji milik sendiri pada host HTTPS yang Anda kendalikan.
 

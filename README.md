@@ -22,11 +22,12 @@ Kode versi awal sudah tersedia:
 - Pemutar lokal `just_audio`/`audio_service`, seek, riwayat, shuffle, repeat, auto-next, kontrol media, dan pemulihan posisi tanpa autoplay.
 - Radio dari tag lokal dengan alias suasana, variasi artis, hingga 25 lagu unik, dan penyimpanan mix sebagai playlist.
 - Unduh HTTPS audio langsung dan manifest JSON berlisensi, pilihan per lagu, checksum opsional, validasi decoder, status per lagu, playlist parsial, pembatalan, retry, dan alert offline.
+- Mesin unduhan YouTube langsung di APK: pencarian judul, preview video/playlist, audio-only, dan pilihan sumber per lagu dari metadata Spotify publik eksperimental. Jalur live Spotify/YouTube belum dibuktikan dari cloud; detail di [YOUTUBE_DOWNLOADER.md](docs/YOUTUBE_DOWNLOADER.md).
 - Layar Beranda, Cari, Koleksi, Impor, Pengaturan, pemutar, antrean, dan editor tag massal.
 
-Pada 13 Oktober 2026, [CI versi 0.1.1 berhasil](https://github.com/sagara-ds/spomaxxing/actions/runs/38432386519): `flutter analyze` bersih, **62 tes lulus**, serta APK debug dan release berhasil dibangun. [Unduh APK release 0.1.1](https://github.com/sagara-ds/spomaxxing/actions/runs/38432386519/artifacts/11831178715), lalu ekstrak `app-release.apk`. Gunakan build release untuk menguji performa; kelancaran playback dan kontrol background di perangkat masih perlu diperiksa.
+Pada 14 Oktober 2026 (Asia/Jakarta), [CI 0.2.0 berhasil](https://github.com/sagara-ds/spomaxxing/actions/runs/38437247110): analisis bersih, **69 tes lulus**, serta APK debug dan release terbangun. [Unduh APK release 0.2.0](https://github.com/sagara-ds/spomaxxing/actions/runs/38437247110/artifacts/11834325586), lalu ekstrak `app-release.apk`. Pengujian live Spotify/YouTube belum dilakukan karena akses diblokir jaringan cloud; parser Spotify publik tetap eksperimental.
 
-Unduhan versi awal berlangsung selama aplikasi terbuka. Pekerjaan terputus dipulihkan sebagai dijeda; retry mengulang lagu yang belum selesai dari awal. Integrasi provider Spotify/SpotMate, WorkManager/background download, ekstraksi sampul, dan pagination koleksi besar belum tersedia.
+Unduhan berlangsung selama aplikasi terbuka. Pekerjaan terputus dipulihkan sebagai dijeda; retry mengulang lagu yang belum selesai dari awal. Integrasi API resmi Spotify/SpotMate, WorkManager/background download, ekstraksi sampul, dan pagination koleksi besar belum tersedia.
 
 Lihat [petunjuk build dan pengujian](docs/BUILD.md), [kontrak bridge Android](docs/NATIVE_BRIDGE.md), dan [pemutar](docs/PLAYBACK.md).
 
@@ -34,4 +35,4 @@ Versi 0.1.1 memperbaiki pembaruan posisi playback yang sebelumnya menyalin antre
 
 Lihat [rencana implementasi](docs/PLAN.md) untuk arsitektur, fitur, urutan pekerjaan, dan kriteria penerimaan.
 
-Lihat [format impor yang didukung](docs/IMPORT_FORMAT.md) untuk manifest playlist versi awal. [Rencana impor lagu/playlist dan unduhan](docs/PLAYLIST_IMPORT.md) mencatat arah fitur dan evaluasi Spotify, spotify-dl, serta SpotMate. Akses provider Spotify/SpotMate belum dikonfigurasi atau terverifikasi; tautannya dikenali dan diberi penjelasan.
+Lihat [format impor](docs/IMPORT_FORMAT.md) dan [mesin unduhan YouTube](docs/YOUTUBE_DOWNLOADER.md). [Rencana impor](docs/PLAYLIST_IMPORT.md) mencatat arah fitur dan riset sebelumnya; dukungan API resmi Spotify serta SpotMate belum dikonfigurasi.

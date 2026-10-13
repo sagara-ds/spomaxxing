@@ -31,16 +31,18 @@ APK debug berada di `build/app/outputs/flutter-apk/app-debug.apk`. Workflow GitH
 
 ## Hasil CI terverifikasi
 
-[CI versi 0.1.1](https://github.com/sagara-ds/spomaxxing/actions/runs/38432386519) berhasil pada 13 Oktober 2026 untuk source commit `11bce14430c08244a839d3854ecad12c55d3b29e`:
+[CI versi 0.2.0](https://github.com/sagara-ds/spomaxxing/actions/runs/38437247110) berhasil pada 14 Oktober 2026 (Asia/Jakarta) untuk source commit `8a95bf586ecf846f8acb0d763cb84987a4a50002`:
 
 - `flutter pub get --enforce-lockfile`: berhasil.
 - `flutter analyze`: `No issues found`.
-- `flutter test`: **62 tes lulus**, termasuk koleksi lazy 10.000 lagu.
+- `flutter test`: **69 tes lulus**.
 - `flutter build apk --debug` dan `flutter build apk --release`: berhasil.
-- Artifact release ZIP 24.270.624 byte, berisi `app-release.apk` sebesar 51.492.698 byte.
-- Manifest APK diperiksa: versi 0.1.1+2, minSdk26/targetSdk35, tanpa READ_MEDIA_AUDIO atau READ_EXTERNAL_STORAGE.
+- Artifact release ZIP 25.964.615 byte, APK 55.508.118 byte.
+- Manifest APK: versi 0.2.0+3, minSdk26/targetSdk35, tanpa izin baca seluruh koleksi audio; lisensi extractor terbundel.
 
-[Unduh APK release](https://github.com/sagara-ds/spomaxxing/actions/runs/38432386519/artifacts/11831178715). Retensi artifact berakhir 27 Oktober 2026. SHA-256 ZIP: `e2a76d75fb2c28c0ea3b292c77bc625cb2caf28e4b7f2273c38fa0a82ee03dbd`. SHA-256 APK: `4bd117557763e486d7c3f8846a79c17938b81f869d78e47453775bed30ed7026`.
+[Unduh APK release](https://github.com/sagara-ds/spomaxxing/actions/runs/38437247110/artifacts/11834325586). Artifact tersedia sampai 28 Oktober 2026 (Asia/Jakarta). SHA-256 ZIP: `6c9b0bbcba707f383aadf6b647e46a78f8a2cac44706ad53b18595201618f34e`; SHA-256 APK: `95c84534c7823a38beabe3b76be17f497e5703ff9eb5d58de2df8460dcae0a9a`.
+
+Tes metadata Spotify menggunakan fixture sintetis dan tes audio menggunakan transport uji. Akses live Spotify/YouTube ditolak proxy lingkungan cloud sehingga keberhasilan membaca playlist tertentu/unduh video tertentu belum terbukti; lihat [YOUTUBE_DOWNLOADER.md](YOUTUBE_DOWNLOADER.md).
 
 APK adalah build pengembangan, bukan rilis store. Source aplikasi yang diuji tidak berubah pada commit dokumentasi hasil CI ini. Pengujian perangkat berikut tetap diperlukan.
 

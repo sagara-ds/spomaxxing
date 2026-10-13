@@ -201,3 +201,9 @@ Integrasi Spotify/SpotMate, transfer yang dijamin berjalan di background, sampul
 Pengguna melaporkan freeze saat scan dan jank ketika playback, lalu memilih alur impor lagu secara eksplisit. Keputusan ini menggantikan rencana scan seluruh perangkat: folder khusus dibuka lewat pemilih berkas, lalu pengguna memilih lagu. Audio lain tidak dimasukkan otomatis.
 
 Posisi playback dipisahkan dari state antrean dan rebuild global. Daftar koleksi/pencarian dimuat secara lazy. [CI 0.1.1](https://github.com/sagara-ds/spomaxxing/actions/runs/38432386519) lulus analisis, 62 tes, serta build debug dan release. Catatan di [PERFORMANCE.md](PERFORMANCE.md) mencatat batas validasi perangkat dan unduhan Spotify.
+
+## 13. Mesin YouTube, 0.2.0
+
+Pengguna menyetujui YouTube sebagai sumber pencarian audio. Modul Dart khusus ditambahkan langsung di APK: pencarian manual, preview video/playlist, metadata Spotify publik eksperimental, pemilihan hasil per lagu, serta resolusi audio-only terbaru saat unduh/retry. Tidak ada server, Python, FFmpeg, atau API key pengguna.
+
+Pada 14 Oktober 2026 (Asia/Jakarta), [CI 0.2.0](https://github.com/sagara-ds/spomaxxing/actions/runs/38437247110) lulus analisis, 69 tes dan build APK debug/release. Pengujian live diblokir jaringan cloud sehingga dukungan playlist Spotify yang diberikan pengguna belum dibuktikan; batasannya dicatat di [YOUTUBE_DOWNLOADER.md](YOUTUBE_DOWNLOADER.md).
