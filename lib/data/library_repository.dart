@@ -181,9 +181,14 @@ class LibraryRepository {
   Future<List<Track>> loadTracks({
     String query = '',
     bool availableOnly = false,
+    bool importedOnly = false,
   }) async {
     final conditions = <String>[];
     final arguments = <Object?>[];
+    if (importedOnly) {
+      conditions.add('source = ?');
+      arguments.add('import');
+    }
     final search = query.trim().toLowerCase();
     if (search.isNotEmpty) {
       conditions.add('''

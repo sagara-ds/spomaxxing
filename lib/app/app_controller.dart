@@ -71,7 +71,6 @@ class AppController extends ChangeNotifier {
     await importer.initialize();
     var completed = importer.jobs.fold<int>(0, (sum, job) => sum + job.completedCount);
     _imports = importer.changes.listen((job) {
-      notifyListeners();
       final count = importer.jobs.fold<int>(0, (sum, job) => sum + job.completedCount);
       if (count == completed && job.isActive) return;
       completed = count;
@@ -84,8 +83,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> reload() async {
-    tracks = (await repository.loadTracks())
-        .where((track) => !track.id.startsWith('media:')).toList();
+    tracks = await repository.loadTracks(importedOnly: true);
     playlists = await repository.loadPlaylists();
     notifyListeners();
   }
