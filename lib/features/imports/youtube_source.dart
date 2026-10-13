@@ -30,8 +30,10 @@ ImportPreview parseSpotifyEmbed(String html, ImportLink link) {
   }
   final script = RegExp(r'<script\b[^>]*\bid\s*=\s*["\x27]__NEXT_DATA__["\x27][^>]*>([\s\S]*?)</script>',
     caseSensitive: false).firstMatch(html);
-  if (script == null) throw const ImportException(
-    'Spotify tidak menyediakan daftar lagu yang dapat dibaca. Playlist privat/radio personal atau perubahan halaman dapat menyebabkan ini.');
+  if (script == null) {
+    throw const ImportException(
+      'Spotify tidak menyediakan daftar lagu yang dapat dibaca. Playlist privat/radio personal atau perubahan halaman dapat menyebabkan ini.');
+  }
   dynamic value;
   try { value = jsonDecode(script.group(1)!); }
   on FormatException { throw const ImportException('Metadata Spotify tidak valid.'); }

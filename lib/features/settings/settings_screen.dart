@@ -57,8 +57,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     const Text('Unduhan berjalan selama aplikasi terbuka. Jika aplikasi ditutup atau koneksi '
       'terputus, pekerjaan dapat dicoba lagi dari tab Impor. Audio yang sudah selesai tetap tersedia offline.'),
     const SizedBox(height: 12),
-    const Text('Tautan Spotify tidak menyediakan berkas audio. Versi ini mendukung tautan HTTPS '
-      'audio langsung dan manifest playlist yang menyertakan sumber serta izin unduh.'),
+    const Text('Spotify dibaca sebagai metadata publik secara eksperimental. Pilih hasil pencarian '
+      'YouTube untuk sumber audionya. Video privat/dibatasi dan playlist personal mungkin tidak tersedia.'),
+    TextButton(onPressed: () => showLicensePage(context: context,
+      applicationName: 'Spomaxxing', applicationVersion: '0.2.0'), child: const Text('Lisensi perangkat lunak')),
     const SizedBox(height: 12),
     const Text('Audio berproteksi DRM dan cache aplikasi musik lain tidak dapat diimpor. '
       'Dukungan format mengikuti codec Android pada perangkat.'),

@@ -535,8 +535,10 @@ class _YoutubePickerState extends State<_YoutubePicker> {
       final results = await widget.controller.searchYoutube(_query.text);
       if (mounted) setState(() => _results = results);
     } catch (error) {
-      if (mounted) setState(() => _error = error is ImportException
-        ? error.message : 'YouTube belum dapat diakses. Coba lagi nanti.');
+      if (mounted) {
+        setState(() => _error = error is ImportException
+          ? error.message : 'YouTube belum dapat diakses. Coba lagi nanti.');
+      }
     } finally { if (mounted) setState(() => _busy = false); }
   }
 
