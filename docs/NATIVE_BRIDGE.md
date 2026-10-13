@@ -75,6 +75,8 @@ berada di `/workspace/work/native-check`, di luar repository. Pemeriksaan ini
 membuktikan sintaks Kotlin dan referensi API Android, tetapi belum membuktikan
 build APK, integrasi plugin, perilaku izin/picker, atau playback di perangkat.
 
+Sesudah pemeriksaan mandiri tersebut, [CI Android #2](https://github.com/sagara-ds/spomaxxing/actions/runs/38424252024) berhasil membangun APK debug dengan dependensi Flutter/AudioService sebenarnya. Kompilasi integrasi plugin kini terverifikasi; pengujian izin, picker, decoder, dan playback pada perangkat tetap belum dilakukan.
+
 Validasi decoder membaca sampel awal dan metadata, bukan seluruh durasi berkas;
 kerusakan pada bagian akhir tetap dapat muncul sebagai error saat playback.
 Ketersediaan codec, kontrol media/background, dan impor MP3/AAC/M4A/FLAC/WAV/Ogg

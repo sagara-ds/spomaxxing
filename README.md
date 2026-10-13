@@ -24,7 +24,7 @@ Kode versi awal sudah tersedia:
 - Unduh HTTPS audio langsung dan manifest JSON berlisensi, pilihan per lagu, checksum opsional, validasi decoder, status per lagu, playlist parsial, pembatalan, retry, dan alert offline.
 - Layar Beranda, Cari, Koleksi, Impor, Pengaturan, pemutar, antrean, dan editor tag massal.
 
-Validasi Kotlin terhadap SDK Android 36 dan pemeriksaan skema SQLite sudah lulus. Analisis Flutter, tes, dan APK disediakan melalui workflow [Android](https://github.com/sagara-ds/spomaxxing/actions/workflows/android.yml); hasil run harus diperiksa sebelum APK dinyatakan siap. Pengujian playback, izin, format audio, serta kontrol background pada perangkat Android masih diperlukan.
+Pada 13 Oktober 2026, [CI Android berhasil](https://github.com/sagara-ds/spomaxxing/actions/runs/38424252024): `flutter analyze` bersih, **61 tes lulus**, dan APK debug berhasil dibangun dengan plugin Flutter serta Kotlin sebenarnya. [Unduh artifact APK debug](https://github.com/sagara-ds/spomaxxing/actions/runs/38424252024/artifacts/11828062742), lalu ekstrak `app-debug.apk` untuk pengujian. Pengujian playback, izin, format audio, serta kontrol background pada perangkat Android masih diperlukan.
 
 Unduhan versi awal berlangsung selama aplikasi terbuka. Pekerjaan terputus dipulihkan sebagai dijeda; retry mengulang lagu yang belum selesai dari awal. Integrasi provider Spotify/SpotMate, WorkManager/background download, ekstraksi sampul, dan pagination koleksi besar belum tersedia.
 

@@ -187,3 +187,11 @@ Sesudah versi pertama stabil, fitur opsional dapat mencakup klasifikasi suasana 
 - Akses baca GitHub melalui konfigurasi lingkungan tersedia.
 - Flutter, Dart, Kotlin CLI, dan Android Debug Bridge belum ditemukan pada PATH saat pemeriksaan; Java tersedia. Instalasi dan kompatibilitas toolchain menjadi pekerjaan tahap 1.
 - Belum ada kode aplikasi, pengujian runtime, atau APK. Diagram dan pilihan dependensi di atas adalah rencana yang perlu dibuktikan pada tahap implementasi.
+
+## 11. Perkembangan implementasi, 13 Oktober 2026
+
+Kode versi awal Flutter/Kotlin telah dibuat dan dipush ke GitHub: koleksi lokal, SQLite, pemutar background, antrean/shuffle/repeat, pencarian, tag massal, radio, playlist, serta impor HTTPS audio/manifest dengan alert offline dan status per lagu.
+
+[CI Android #2](https://github.com/sagara-ds/spomaxxing/actions/runs/38424252024) lulus analisis Flutter, 61 tes, dan build APK debug. Lockfile transitif dikomit. Detail hasil dan artifact ada di [BUILD.md](BUILD.md).
+
+Integrasi Spotify/SpotMate, transfer yang dijamin berjalan di background, sampul tertanam, pagination koleksi besar, build release untuk distribusi, serta pengujian perangkat masih belum selesai. Tahapan rencana di atas tetap menjadi arah pengembangan; hasil CI tidak menggantikan pembuktian runtime Android.
