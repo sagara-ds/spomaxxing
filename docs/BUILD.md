@@ -36,6 +36,7 @@ APK debug berada di `build/app/outputs/flutter-apk/app-debug.apk`. Workflow GitH
 - Dua file Kotlin dikompilasi dengan Kotlin 2.1.0, JVM 11, dan Android platform 36 resmi. Flutter/AudioService memakai stub pada pemeriksaan mandiri; detail di `NATIVE_BRIDGE.md`.
 - Skema SQLite dibuat serta diuji untuk entry playlist yang belum tersedia dan penghapusan berantai menggunakan SQLite lokal.
 - `git diff --check` tidak menemukan whitespace error.
+- Parser tree-sitter Dart memeriksa 25 file Dart tanpa kesalahan sintaks; seluruh XML Android dapat diparse. Ini belum pemeriksaan tipe/lint Dart.
 - Flutter lokal belum dapat dijalankan: proxy menolak host `storage.googleapis.com` saat bootstrap Dart SDK dengan HTTP 403. Tidak ada sertifikat atau pengaturan proxy yang dinonaktifkan. Workflow CI menjadi jalur validasi Flutter; catat hasil run yang sesungguhnya.
 
 Tes mencakup identitas URI lokal, queue token, shuffle/repeat/riwayat, radio/tag/alias, database nyata, rescan, rollback, pencarian, pemulihan, channel Android, UI empty/unavailable state, dan importer dengan transport uji deterministik. Transport uji tidak membuktikan unduhan atau decoder di Android.
