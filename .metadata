@@ -1,0 +1,5 @@
+# Flutter project metadata; Android-only application.
+version:
+  revision: "d693b4b9dbac2acd4477aea4555ca6dcbea44ba2"
+  channel: "stable"
+project_type: app

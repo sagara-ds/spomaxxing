@@ -1,6 +1,6 @@
 # Spomaxxing
 
-Rencana aplikasi pemutar musik Android dengan pemutaran offline dan impor playlist daring, dibuat dengan Flutter, Dart, dan Kotlin. Antarmuka menggunakan palet hijau dan hitam dengan identitas Spomaxxing sendiri.
+Pemutar musik Android berbasis Flutter, Dart, dan Kotlin. Versi awal menyediakan koleksi lokal, pencarian, tag suasana, radio mix, playlist, serta impor audio yang dapat diputar offline. Antarmuka memakai palet hijau dan hitam dengan identitas Spomaxxing sendiri.
 
 ## Keputusan awal
 
@@ -15,8 +15,21 @@ Rencana aplikasi pemutar musik Android dengan pemutaran offline dan impor playli
 
 ## Status
 
-Repositori saat ini berisi perencanaan. Kode aplikasi, dependensi Flutter, dan build APK belum dibuat atau diuji.
+Kode versi awal sudah tersedia:
+
+- Pemindaian MediaStore dengan izin Android yang sesuai serta pemilih audio lokal multiberkas dengan salinan privat.
+- SQLite untuk koleksi, tag, favorit, playlist, antrean, posisi, dan pekerjaan impor. Pindai ulang mempertahankan perubahan pengguna.
+- Pemutar lokal `just_audio`/`audio_service`, seek, riwayat, shuffle, repeat, auto-next, kontrol media, dan pemulihan posisi tanpa autoplay.
+- Radio dari tag lokal dengan alias suasana, variasi artis, hingga 25 lagu unik, dan penyimpanan mix sebagai playlist.
+- Unduh HTTPS audio langsung dan manifest JSON berlisensi, pilihan per lagu, checksum opsional, validasi decoder, status per lagu, playlist parsial, pembatalan, retry, dan alert offline.
+- Layar Beranda, Cari, Koleksi, Impor, Pengaturan, pemutar, antrean, dan editor tag massal.
+
+Validasi Kotlin terhadap SDK Android 36 dan pemeriksaan skema SQLite sudah lulus. Analisis Flutter, tes, dan APK disediakan melalui workflow [Android](https://github.com/sagara-ds/spomaxxing/actions/workflows/android.yml); hasil run harus diperiksa sebelum APK dinyatakan siap. Pengujian playback, izin, format audio, serta kontrol background pada perangkat Android masih diperlukan.
+
+Unduhan versi awal berlangsung selama aplikasi terbuka. Pekerjaan terputus dipulihkan sebagai dijeda; retry mengulang lagu yang belum selesai dari awal. Integrasi provider Spotify/SpotMate, WorkManager/background download, ekstraksi sampul, dan pagination koleksi besar belum tersedia.
+
+Lihat [petunjuk build dan pengujian](docs/BUILD.md), [kontrak bridge Android](docs/NATIVE_BRIDGE.md), dan [pemutar](docs/PLAYBACK.md).
 
 Lihat [rencana implementasi](docs/PLAN.md) untuk arsitektur, fitur, urutan pekerjaan, dan kriteria penerimaan.
 
-Lihat [rencana impor lagu/playlist dan unduhan](docs/PLAYLIST_IMPORT.md) untuk alur tempel tautan, status unduhan, alert offline, serta evaluasi Spotify, spotify-dl, dan referensi SpotMate. Pengguna telah memilih impor langsung di Android dengan internet saat dibutuhkan. Integrasi SpotMate belum terverifikasi.
+Lihat [format impor yang didukung](docs/IMPORT_FORMAT.md) untuk manifest playlist versi awal. [Rencana impor lagu/playlist dan unduhan](docs/PLAYLIST_IMPORT.md) mencatat arah fitur dan evaluasi Spotify, spotify-dl, serta SpotMate. Akses provider Spotify/SpotMate belum dikonfigurasi atau terverifikasi; tautannya dikenali dan diberi penjelasan.

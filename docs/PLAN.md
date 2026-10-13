@@ -15,7 +15,7 @@ Keputusan yang telah dipilih pengguna:
 | Tampilan | Palet hijau dan hitam |
 | Penyimpanan hasil pekerjaan | Commit dan push ke GitHub |
 
-Dokumen ini adalah tahap perencanaan. Implementasi aplikasi dilanjutkan setelah pengguna meninjau rencana dan meminta pelaksanaannya.
+Dokumen ini adalah kontrak rencana awal. Pengguna telah meminta implementasi dilanjutkan; kode versi awal tersedia dan status validasi terkini dicatat di README serta [BUILD.md](BUILD.md).
 
 Pengguna telah menyetujui internet saat diperlukan untuk impor dan unduh di Android. [Rencana impor playlist](PLAYLIST_IMPORT.md) menjelaskan fitur tersebut, termasuk alert tanpa koneksi. Keputusan ini merevisi aturan awal APK tanpa izin internet; koleksi, playback, dan radio lokal tetap dapat berjalan offline.
 
