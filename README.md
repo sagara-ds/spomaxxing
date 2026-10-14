@@ -1,38 +1,31 @@
 # Spomaxxing
 
-Pemutar musik Android berbasis Flutter, Dart, dan Kotlin. Versi awal menyediakan koleksi lokal, pencarian, tag suasana, radio mix, playlist, serta impor audio yang dapat diputar offline. Antarmuka memakai palet hijau dan hitam dengan identitas Spomaxxing sendiri.
+Pemutar musik Android pribadi berbasis Flutter. Koleksi lokal + impor Spotify untuk didengar offline.
 
-## Keputusan awal
+## Cara pakai
 
-- Platform pertama: Android.
-- Sumber musik: berkas audio perangkat dan unduhan dari sumber yang mengizinkan pengunduhan.
-- Pencarian suasana: kata kunci dan tag lokal, seperti santai, fokus, sedih, dan semangat.
-- Fitur utama: koleksi lokal, pencarian, radio mix, shuffle, perpindahan lagu otomatis, dan pemutaran latar belakang.
-- Internet digunakan saat pengguna mengimpor tautan atau mengunduh audio. Playback, pencarian koleksi, dan radio lokal tetap berjalan tanpa internet.
-- Saat pengguna mencoba mengunduh tanpa koneksi, tampilkan alert. Lagu yang sudah tersimpan tetap dapat diputar.
+1. Buka tab **Impor**, tempel tautan Spotify (lagu/playlist), centang izin, tekan **Pratinjau tautan**.
+2. Kalau diminta, selesaikan verifikasi Spotdown di WebView (cukup sekali per sesi).
+3. Pilih lagu → **Unduh** → putar dari **Koleksi** tanpa internet.
 
-"Semua lagu" berarti audio yang dipilih untuk diimpor atau selesai diunduh ke koleksi aplikasi. Ketersediaan lagu bergantung pada berkas yang dimiliki pengguna; aplikasi tidak menyediakan katalog atau audio Spotify.
+Unduhan berjalan selama aplikasi terbuka. Lagu gagal bisa diulang lewat **Coba lagi**; yang sudah tersimpan tidak ikut diunduh ulang.
 
-## Status
+## Sumber audio
 
-Kode versi awal sudah tersedia:
+- **Utama:** Spotdown (metadata + MP3). Token sesi hanya di memori, tidak disimpan.
+- **Cadangan:** ekstraksi YouTube lokal di perangkat, dipakai otomatis kalau Spotdown gagal untuk lagu tertentu.
 
-- Impor audio pilihan lewat pemilih berkas multiberkas, dengan salinan privat. Buka folder musik lalu pilih lagu yang diinginkan; aplikasi tidak memindai seluruh perangkat.
-- SQLite untuk koleksi, tag, favorit, playlist, antrean, posisi, dan pekerjaan impor. Koleksi lama dari pemindaian tidak ditampilkan, tetapi rekornya tidak dihapus dan berkas asli tidak disentuh.
-- Pemutar lokal `just_audio`/`audio_service`, seek, riwayat, shuffle, repeat, auto-next, kontrol media, dan pemulihan posisi tanpa autoplay.
-- Radio dari tag lokal dengan alias suasana, variasi artis, hingga 25 lagu unik, dan penyimpanan mix sebagai playlist.
-- Unduh HTTPS audio langsung dan manifest JSON berlisensi, pilihan per lagu, checksum opsional, validasi decoder, status per lagu, playlist parsial, pembatalan, retry, dan alert offline.
-- Mesin unduhan YouTube langsung di APK: pencarian judul, preview video/playlist, audio-only, dan pilihan sumber per lagu dari metadata Spotify publik eksperimental. Jalur live Spotify/YouTube belum dibuktikan dari cloud; detail di [YOUTUBE_DOWNLOADER.md](docs/YOUTUBE_DOWNLOADER.md).
-- Layar Beranda, Cari, Koleksi, Impor, Pengaturan, pemutar, antrean, dan editor tag massal.
+Spotdown adalah layanan pihak ketiga yang bisa berubah sewaktu-waktu; kalau endpoint-nya berubah, perbaikannya cukup di `lib/features/imports/spotdown_source.dart`.
 
-Pada 14 Oktober 2026 (Asia/Jakarta), [CI 0.2.0 berhasil](https://github.com/sagara-ds/spomaxxing/actions/runs/38437247110): analisis bersih, **69 tes lulus**, serta APK debug dan release terbangun. [Unduh APK release 0.2.0](https://github.com/sagara-ds/spomaxxing/actions/runs/38437247110/artifacts/11834325586), lalu ekstrak `app-release.apk`. Pengujian live Spotify/YouTube belum dilakukan karena akses diblokir jaringan cloud; parser Spotify publik tetap eksperimental.
+## Build & tes
 
-Unduhan berlangsung selama aplikasi terbuka. Pekerjaan terputus dipulihkan sebagai dijeda; retry mengulang lagu yang belum selesai dari awal. Integrasi API resmi Spotify/SpotMate, WorkManager/background download, ekstraksi sampul, dan pagination koleksi besar belum tersedia.
+Butuh Flutter 3.47.2+ (Dart ^3.10.0).
 
-Lihat [petunjuk build dan pengujian](docs/BUILD.md), [kontrak bridge Android](docs/NATIVE_BRIDGE.md), dan [pemutar](docs/PLAYBACK.md).
+```sh
+flutter pub get --enforce-lockfile
+flutter analyze
+flutter test
+flutter build apk --debug   # atau --release
+```
 
-Versi 0.1.1 memperbaiki pembaruan posisi playback yang sebelumnya menyalin antrean dan membangun ulang seluruh tab. Daftar lagu sekarang dibuat secara lazy. Lihat [catatan performa](docs/PERFORMANCE.md); kelancaran pada perangkat tetap perlu diuji menggunakan APK release.
-
-Lihat [rencana implementasi](docs/PLAN.md) untuk arsitektur, fitur, urutan pekerjaan, dan kriteria penerimaan.
-
-Lihat [format impor](docs/IMPORT_FORMAT.md) dan [mesin unduhan YouTube](docs/YOUTUBE_DOWNLOADER.md). [Rencana impor](docs/PLAYLIST_IMPORT.md) mencatat arah fitur dan riset sebelumnya; dukungan API resmi Spotify serta SpotMate belum dikonfigurasi.
+Detail arsitektur ada di `docs/` (`PLAN.md`, `PLAYLIST_IMPORT.md`, `YOUTUBE_DOWNLOADER.md`, `BUILD.md`).
