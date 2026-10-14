@@ -13,6 +13,10 @@ const maxImportTracks = 100;
 const maxManifestBytes = 1024 * 1024;
 const maxAudioBytes = 256 * 1024 * 1024;
 
+void _debugImport(String message) {
+  print('[DEBUG-7F31] $message');
+}
+
 /// Validated public HTTPS links only; this policy is also applied to redirects.
 Uri validateImportUri(Uri uri) {
   final host = uri.host.toLowerCase();
@@ -134,6 +138,8 @@ class ImportResponse {
     required this.finalUri,
     this.contentType,
     this.contentLength,
+    this.contentRange,
+    this.allowPartialContent = false,
     this.abort,
   });
   final int statusCode;
@@ -141,6 +147,8 @@ class ImportResponse {
   final Uri finalUri;
   final String? contentType;
   final int? contentLength;
+  final String? contentRange;
+  final bool allowPartialContent;
   final void Function()? abort;
 }
 
@@ -320,6 +328,7 @@ class ImportService {
     _ensureOpen();
     if (_starting || _activeJobId != null) throw const ImportException('Tunggu unduhan aktif selesai atau batalkan dahulu.');
     final candidates = preview.tracks.where((candidate) => selectedTrackIds == null || selectedTrackIds.contains(candidate.id)).toList();
+    _debugImport('download requested tracks=${candidates.length}');
     if (candidates.isEmpty || candidates.length > maxImportTracks) throw const ImportException('Pilih 1 sampai 100 lagu untuk diunduh.');
     _validateCandidates(candidates);
     _starting = true;
@@ -411,16 +420,32 @@ class ImportService {
   Future<ImportJob> _run(ImportJob job) async {
     _activeJobId = job.id;
     _cancelled = false;
+    _debugImport('job started tracks=${job.tracks.length}');
     try {
       job = job.copyWith(status: ImportJobStatus.downloading, updatedAt: _now());
       await _persist(job);
       final directory = await storageDirectory();
       await directory.create(recursive: true);
+      _debugImport('storage ready');
       for (var index = 0; index < job.tracks.length; index++) {
         if (job.tracks[index].status == ImportTrackStatus.completed) continue;
         if (_cancelled) break;
-        job = _trackUpdate(job, index, job.tracks[index].copyWith(status: ImportTrackStatus.downloading, receivedBytes: 0, clearTotalBytes: true, clearError: true));
+        final initialStatus =
+            job.tracks[index].candidate.provider == 'youtube'
+            ? ImportTrackStatus.resolving
+            : ImportTrackStatus.downloading;
+        job = _trackUpdate(
+          job,
+          index,
+          job.tracks[index].copyWith(
+            status: initialStatus,
+            receivedBytes: 0,
+            clearTotalBytes: true,
+            clearError: true,
+          ),
+        );
         await _persist(job);
+        _debugImport('track index=$index state=$initialStatus');
         try {
           final audio = await _downloadAudio(job, index, directory, (track) {
             job = _trackUpdate(job, index, track);
@@ -428,6 +453,7 @@ class ImportService {
           });
           _ensureNotCancelled();
           final localId = await saveLocalTrack(audio);
+          _debugImport('track index=$index local save returned');
           if (localId.trim().isEmpty) throw const ImportException('Penyimpanan koleksi tidak memberikan identitas lagu.');
           job = _trackUpdate(job, index, job.tracks[index].copyWith(status: ImportTrackStatus.completed, localTrackId: localId, clearError: true));
           await _persist(job);
@@ -437,16 +463,26 @@ class ImportService {
           _cancelled = true;
           break;
         } on SocketException catch (_) {
+          _debugImport('track index=$index socket exception');
           job = _pause(job, index);
           await _publishPlaylist(job);
           await _persist(job);
           return job;
         } on TimeoutException catch (_) {
-          job = _pause(job, index);
+          _debugImport('track index=$index timeout exception');
+          final isYoutube = job.tracks[index].candidate.provider == 'youtube';
+          job = _pause(
+            job,
+            index,
+            error: isYoutube
+                ? 'YouTube tidak mengirim data audio dalam 30 detik. Coba lagi atau ganti sumber YouTube.'
+                : 'Sumber audio tidak mengirim data dalam 30 detik. Coba lagi.',
+          );
           await _publishPlaylist(job);
           await _persist(job);
           return job;
         } catch (error) {
+          _debugImport('track index=$index failed type=${error.runtimeType}');
           if (_cancelled) {
             job = _trackUpdate(job, index, job.tracks[index].copyWith(status: ImportTrackStatus.cancelled, receivedBytes: 0, clearTotalBytes: true, error: 'Unduhan dibatalkan.'));
             break;
@@ -476,8 +512,10 @@ class ImportService {
       if (_cancelled) await _publishPlaylist(job);
       job = job.copyWith(updatedAt: _now());
       await _persist(job);
+      _debugImport('job finished state=${job.status} completed=${job.completedCount}/${job.totalCount}');
       return job;
     } catch (error) {
+      _debugImport('job failed type=${error.runtimeType}');
       job = job.copyWith(status: ImportJobStatus.failed, error: _errorMessage(error), updatedAt: _now());
       // A persistence error is surfaced to the caller rather than claiming success.
       _emit(job);
@@ -488,8 +526,8 @@ class ImportService {
     }
   }
 
-  ImportJob _pause(ImportJob job, int index) => job.copyWith(
-    status: ImportJobStatus.paused, updatedAt: _now(), error: 'Dijeda — menunggu koneksi. Coba lagi untuk mengunduh lagu yang belum selesai dari awal.',
+  ImportJob _pause(ImportJob job, int index, {String? error}) => job.copyWith(
+    status: ImportJobStatus.paused, updatedAt: _now(), error: error ?? 'Koneksi ke sumber terputus. Periksa jaringan atau coba lagi; internet perangkat belum tentu dapat menjangkau layanan audio.',
     tracks: job.tracks.asMap().entries.map((entry) => entry.key >= index && entry.value.status != ImportTrackStatus.completed && entry.value.status != ImportTrackStatus.failed
       ? entry.value.copyWith(status: ImportTrackStatus.paused, receivedBytes: 0, clearTotalBytes: true)
       : entry.value).toList(),
@@ -506,9 +544,20 @@ class ImportService {
 
   Future<ImportedAudio> _downloadAudio(ImportJob job, int index, Directory directory, void Function(ImportTrackProgress) update) async {
     final candidate = job.tracks[index].candidate;
-    final resolved = candidate.provider == 'youtube'
-        ? await resolveYoutubeAudio!(candidate) : null;
+    ResolvedImportAudio? resolved;
+    if (candidate.provider == 'youtube') {
+      _debugImport('track index=$index resolving YouTube audio');
+      resolved = await resolveYoutubeAudio!(candidate);
+      _debugImport('track index=$index YouTube resolver returned');
+      try {
+        _ensureNotCancelled();
+      } catch (_) {
+        resolved.response.abort?.call();
+        rethrow;
+      }
+    }
     final response = resolved?.response ?? await _transport.get(candidate.url);
+    _debugImport('track index=$index response status=${response.statusCode} bytes=${response.contentLength ?? -1} type=${response.contentType ?? 'unknown'}');
     _abort = response.abort;
     final temp = File('${directory.path}/${job.id}-$index.part');
     IOSink? fileSink;
@@ -523,16 +572,36 @@ class ImportService {
         throw const ImportException('Server tidak mengirim tipe audio yang didukung.');
       }
       if (response.contentLength == 0) throw const ImportException('Berkas audio kosong.');
-      var progress = job.tracks[index].copyWith(totalBytes: response.contentLength);
+      if (response.statusCode == 206) {
+        final match = RegExp(r'^bytes\s+(\d+)-(\d+)/(\d+)$', caseSensitive: false)
+            .firstMatch(response.contentRange?.trim() ?? '');
+        final start = int.tryParse(match?.group(1) ?? '');
+        final end = int.tryParse(match?.group(2) ?? '');
+        final total = int.tryParse(match?.group(3) ?? '');
+        if (start != 0 || end == null || total == null || end + 1 != total ||
+            response.contentLength != total) {
+          throw const ImportException('YouTube hanya mengirim sebagian audio. Coba lagi untuk mengambil stream lengkap.');
+        }
+      }
+      var progress = job.tracks[index].copyWith(
+        status: ImportTrackStatus.downloading,
+        totalBytes: response.contentLength,
+      );
       update(progress);
       var count = 0;
       var lastUpdate = _now();
       final hashOutput = _DigestOutput();
       final hashInput = sha256.startChunkedConversion(hashOutput);
       fileSink = temp.openWrite(mode: FileMode.writeOnly);
-      await fileSink.addStream(response.body.map((chunk) {
+      _debugImport('track index=$index listening for audio bytes');
+      var lastLoggedBytes = 0;
+      final chunks = response.body.map((chunk) {
         _ensureNotCancelled();
         count += chunk.length;
+        if (lastLoggedBytes == 0 || count - lastLoggedBytes >= 2 * 1024 * 1024) {
+          _debugImport('track index=$index received bytes=$count');
+          lastLoggedBytes = count;
+        }
         if (count > maxAudioBytes) throw const ImportException('Berkas audio melebihi batas 256 MiB.');
         if (response.contentLength != null && count > response.contentLength!) throw const ImportException('Ukuran audio berbeda dari ukuran yang diberikan server.');
         hashInput.add(chunk);
@@ -542,19 +611,33 @@ class ImportService {
           lastUpdate = _now();
         }
         return chunk;
-      }));
+      }).timeout(
+        const Duration(seconds: 30),
+        onTimeout: (sink) {
+          _debugImport('track index=$index idle timeout; closing audio stream');
+          sink.addError(TimeoutException('Audio stream was idle for 30 seconds.'));
+          sink.close();
+          response.abort?.call();
+        },
+      );
+      await for (final chunk in chunks) {
+        fileSink.add(chunk);
+      }
       await fileSink.flush();
       await fileSink.close();
       fileSink = null;
       hashInput.close();
       _ensureNotCancelled();
       if (count == 0 || (response.contentLength != null && count != response.contentLength)) throw const ImportException('Transfer audio tidak lengkap.');
+      _debugImport('track index=$index stream complete bytes=$count');
       final digest = hashOutput.value!.toString();
       if (candidate.sha256 != null && digest != candidate.sha256!.toLowerCase()) throw const ImportException('Checksum audio tidak cocok dengan manifest.');
       progress = progress.copyWith(status: ImportTrackStatus.verifying, receivedBytes: count);
       update(progress);
       await saveJob(_jobs[job.id]!);
+      _debugImport('track index=$index validating audio');
       final metadata = await validateAudio(temp.uri);
+      _debugImport('track index=$index audio validation returned');
       _ensureNotCancelled();
       if (metadata['isValid'] == false || metadata['valid'] == false) throw const ImportException('Decoder tidak dapat membaca berkas audio ini.');
       final rawDuration = metadata['durationMs'];
@@ -564,8 +647,10 @@ class ImportService {
       // Always publish the bytes just hashed and validated, even after a retry.
       await temp.rename(finalFile.path);
       if (!await finalFile.exists()) throw const ImportException('Berkas audio belum tersimpan.');
+      _debugImport('track index=$index file published bytes=$count');
       return ImportedAudio(candidate: candidate, fileUri: finalFile.uri, durationMs: rawDuration.toInt(), sha256: digest, bytes: count);
     } finally {
+      _debugImport('track index=$index response cleanup');
       _abort = null;
       response.abort?.call();
       if (fileSink != null) {
@@ -577,7 +662,8 @@ class ImportService {
 
   void _validateResponse(ImportResponse response, int maxBytes) {
     validateImportUri(response.finalUri);
-    if (response.statusCode < 200 || response.statusCode >= 300 || response.statusCode == 206) {
+    if (response.statusCode < 200 || response.statusCode >= 300 ||
+        (response.statusCode == 206 && !response.allowPartialContent)) {
       final code = response.statusCode;
       throw ImportException(code == 401 || code == 403 ? 'Sumber menolak akses (HTTP $code). Periksa izin sumber.'
         : code == 404 || code == 410 ? 'Berkas sumber tidak tersedia lagi (HTTP $code).'

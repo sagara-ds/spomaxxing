@@ -6,19 +6,19 @@ Mesin bekerja langsung di Android dengan Dart, memakai `youtube_explode_dart` 3.
 
 1. Buka Impor dan tempel tautan lagu/playlist Spotify atau YouTube. Alternatifnya, tekan Cari judul di YouTube dan masukkan judul/artis.
 2. Untuk Spotify, aplikasi mencoba membaca metadata dari halaman embed publik. Ini jalur eksperimental, bukan integrasi Spotify Web API resmi. Playlist privat/radio personal, halaman tanpa daftar lengkap, dan perubahan format dapat gagal. Daftar kosong atau lebih dari 100 lagu ditolak, bukan dibuat seolah selesai.
-3. Pilih hasil YouTube untuk setiap lagu Spotify yang ingin diunduh. Dialog menampilkan judul, kanal, dan durasi; pencarian bisa diedit. Tidak ada pencocokan/unduhan otomatis ke hasil pertama. Metadata asal dan sumber video pilihan disimpan terpisah melalui provenance pekerjaan.
+3. Untuk setiap lagu Spotify, aplikasi mencari YouTube dan memilih hasil teratas sebagai kandidat secara otomatis. Periksa judul, kanal, dan durasinya; tombol **Ganti sumber YouTube** membuka pencarian manual. Jika pencarian gagal atau tidak ada hasil, pilih sumber secara manual. Pemilihan otomatis tidak memulai unduhan. Metadata asal dan sumber video pilihan disimpan terpisah melalui provenance pekerjaan.
 4. Konfirmasikan izin unduh, pilih lagu yang sudah mempunyai sumber, kemudian tekan Unduh. Tautan video/playlist YouTube langsung menampilkan pratinjau sumber yang diberikan.
 5. Mesin mengambil manifest stream terbaru per video dan memilih audio-only M4A bila tersedia, atau WebM. Tidak ada konversi ke MP3 atau klaim kualitas asli Spotify.
 6. Transfer serial memakai batas 256 MiB, timeout, hash konten, berkas `.part`, validasi decoder Android, dan rename sebelum publikasi koleksi. Playlist parsial mempertahankan slot gagal dan urutan sumber.
 7. Jika koneksi terputus, retry mengunduh lagu yang belum selesai dari awal. URL Googlevideo baru diambil saat retry; URL stream bertanda tangan/kedaluwarsa tidak disimpan sebagai identitas sumber. Berkas yang sudah selesai tetap offline dan pemutar tidak menggunakan URL YouTube.
 
-Unduhan masih memerlukan aplikasi tetap terbuka. Codec mengikuti Android; bila decoder tidak mendukung container hasil ekstraksi, lagu ditandai gagal. Video privat, berbayar, dibatasi umur/login, siaran langsung, atau layanan yang menolak ekstraksi tidak dianggap didukung. Tidak ada solusi captcha, proxy untuk menghindari penolakan, atau autentikasi dengan akun pengguna.
+Unduhan masih memerlukan aplikasi tetap terbuka. Saat menyiapkan audio YouTube, UI menampilkan status pencarian stream; sesudahnya progres byte transfer ditampilkan. Kegagalan pencarian stream dibedakan dari transfer yang koneksinya putus. Codec mengikuti Android; bila decoder tidak mendukung container hasil ekstraksi, lagu ditandai gagal. Video privat, berbayar, dibatasi umur/login, siaran langsung, atau layanan yang menolak ekstraksi tidak dianggap didukung. Tidak ada solusi captcha, proxy untuk menghindari penolakan, atau autentikasi dengan akun pengguna.
 
 ## Implementasi
 
 - `youtube_source.dart`: metadata embed Spotify eksperimental, pencarian/video/playlist YouTube, pilihan stream dan lifecycle HTTP client.
 - `import_service.dart`: batas ukuran, antrean transfer, pembatalan, penyimpanan, retry, serta publikasi lokal. Provider diinjeksi supaya tes tidak membutuhkan internet.
-- `import_screen.dart`: pilihan hasil per lagu, pencarian manual, preview lazy, status dan konfirmasi unduh.
+- `import_screen.dart`: memilih hasil teratas YouTube otomatis per lagu Spotify (paling banyak dua pencarian bersamaan), penggantian/pencarian manual, status pencarian, preview, dan konfirmasi unduh.
 - `ImportCandidate.provider`: `direct`, `spotify` (metadata belum memiliki sumber), atau `youtube` (video yang dipilih). Field baru opsional pada JSON lama; pekerjaan audio langsung sebelumnya tetap terbaca.
 
 ## Batas verifikasi

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
@@ -25,6 +27,11 @@ class _ImportScreenState extends State<ImportScreen> {
   ImportPreview? _preview;
   bool _hasPermission = false;
   bool _requestBusy = false;
+  int _previewGeneration = 0;
+  bool _autoSearchRunning = false;
+  int _autoSearchFinished = 0;
+  int _autoSearchTotal = 0;
+  final Map<String, _AutoSourceStatus> _autoSourceStatus = {};
 
   @override
   void dispose() {
@@ -46,6 +53,11 @@ class _ImportScreenState extends State<ImportScreen> {
   Future<void> _previewLink() {
     final link = _urlController.text.trim();
     final permission = _hasPermission;
+    final generation = ++_previewGeneration;
+    _autoSourceStatus.clear();
+    _autoSearchRunning = false;
+    _autoSearchFinished = 0;
+    _autoSearchTotal = 0;
     return _run(() async {
       final preview = await widget.controller.previewImport(
         link,
@@ -58,13 +70,95 @@ class _ImportScreenState extends State<ImportScreen> {
           ..clear()
           ..addAll(preview.tracks.map((track) => track.id));
       });
+      unawaited(_autoSelectTopSources(preview, generation));
     });
+  }
+
+  Future<void> _autoSelectTopSources(ImportPreview preview, int generation) async {
+    final candidates = preview.tracks.where((track) => track.provider == 'spotify').toList();
+    if (candidates.isEmpty || !mounted || generation != _previewGeneration) return;
+    setState(() {
+      _autoSearchRunning = true;
+      _autoSearchFinished = 0;
+      _autoSearchTotal = candidates.length;
+      _autoSourceStatus
+        ..clear()
+        ..addEntries(candidates.map((track) => MapEntry(track.id, _AutoSourceStatus.searching)));
+    });
+
+    var nextIndex = 0;
+    Future<void> worker() async {
+      while (nextIndex < candidates.length && mounted && generation == _previewGeneration) {
+        final candidate = candidates[nextIndex++];
+        try {
+          final results = await widget.controller.searchYoutube(
+            '${candidate.title} ${candidate.artist}',
+          );
+          if (results.isNotEmpty) {
+            _replaceAutomaticSource(preview, generation, candidate, results.first);
+          } else {
+            _setAutomaticSourceStatus(preview, generation, candidate.id, _AutoSourceStatus.noResult);
+          }
+        } catch (_) {
+          _setAutomaticSourceStatus(preview, generation, candidate.id, _AutoSourceStatus.searchFailed);
+        } finally {
+          if (mounted && generation == _previewGeneration) {
+            setState(() => _autoSearchFinished++);
+          }
+        }
+      }
+    }
+
+    final workerCount = candidates.length < 2 ? candidates.length : 2;
+    await Future.wait(List.generate(workerCount, (_) => worker()));
+    if (mounted && generation == _previewGeneration) {
+      setState(() => _autoSearchRunning = false);
+    }
+  }
+
+  void _replaceAutomaticSource(
+    ImportPreview original,
+    int generation,
+    ImportCandidate candidate,
+    YoutubeResult result,
+  ) {
+    if (!mounted || generation != _previewGeneration) return;
+    final preview = _preview;
+    if (preview == null || preview.sourceUrl != original.sourceUrl) return;
+    final matches = preview.tracks.where((track) => track.id == candidate.id);
+    if (matches.isEmpty || matches.first.provider != 'spotify') return;
+    setState(() {
+      _preview = ImportPreview(
+        sourceUrl: preview.sourceUrl,
+        name: preview.name,
+        isPlaylist: preview.isPlaylist,
+        tracks: preview.tracks.map((track) => track.id == candidate.id
+            ? result.forTrack(candidate)
+            : track).toList(),
+      );
+      _autoSourceStatus[candidate.id] = _AutoSourceStatus.automaticSelected;
+    });
+  }
+
+  void _setAutomaticSourceStatus(
+    ImportPreview original,
+    int generation,
+    String candidateId,
+    _AutoSourceStatus status,
+  ) {
+    if (!mounted || generation != _previewGeneration) return;
+    final preview = _preview;
+    if (preview == null || preview.sourceUrl != original.sourceUrl) return;
+    final matches = preview.tracks.where((track) => track.id == candidateId);
+    if (matches.isEmpty || matches.first.provider != 'spotify') return;
+    setState(() => _autoSourceStatus[candidateId] = status);
   }
 
   Future<void> _downloadSelected() {
     final preview = _preview;
     if (preview == null || _selectedIds.isEmpty) return Future<void>.value();
     final selected = Set<String>.of(_selectedIds);
+    print('[DEBUG-7F31] download button invoked selected=${selected.length} permission=$_hasPermission');
     if (!_hasPermission && preview.tracks.any((track) => track.provider != 'direct')) {
       return widget.onAction(() async { throw const ImportException('Konfirmasikan izin mengunduh audio pilihan.'); });
     }
@@ -76,9 +170,19 @@ class _ImportScreenState extends State<ImportScreen> {
       builder: (context) => _YoutubePicker(candidate: candidate, controller: widget.controller));
     if (selected == null || !mounted || _preview == null) return;
     if (!_hasPermission) throw const ImportException('Centang izin unduh, lalu pilih sumber YouTube.');
-    setState(() => _preview = ImportPreview(sourceUrl: _preview!.sourceUrl,
-      name: _preview!.name, isPlaylist: _preview!.isPlaylist,
-      tracks: _preview!.tracks.map((track) => track.id == candidate.id ? selected.forTrack(candidate) : track).toList()));
+    setState(() {
+      _preview = ImportPreview(
+        sourceUrl: _preview!.sourceUrl,
+        name: _preview!.name,
+        isPlaylist: _preview!.isPlaylist,
+        tracks: _preview!.tracks
+            .map((track) => track.id == candidate.id
+                ? selected.forTrack(candidate)
+                : track)
+            .toList(),
+      );
+      _autoSourceStatus[candidate.id] = _AutoSourceStatus.manuallySelected;
+    });
   });
 
   Future<void> _searchManual() => _run(() async {
@@ -90,6 +194,7 @@ class _ImportScreenState extends State<ImportScreen> {
       builder: (context) => _YoutubePicker(candidate: seed, controller: widget.controller));
     if (selected == null || !mounted) return;
     if (!_hasPermission) throw const ImportException('Konfirmasikan izin unduh sebelum memilih audio.');
+    ++_previewGeneration;
     final candidate = ImportCandidate(id: 'youtube:${selected.id}', title: selected.title,
       artist: selected.channel, durationMs: selected.durationMs, url: selected.url,
       provider: 'youtube', license: 'Izin unduh dikonfirmasi pengguna', source: selected.url.toString());
@@ -97,6 +202,10 @@ class _ImportScreenState extends State<ImportScreen> {
       _preview = ImportPreview(sourceUrl: selected.url.toString(), name: selected.title,
         tracks: [candidate], isPlaylist: false);
       _selectedIds..clear()..add(candidate.id);
+      _autoSourceStatus.clear();
+      _autoSearchRunning = false;
+      _autoSearchFinished = 0;
+      _autoSearchTotal = 0;
     });
   });
 
@@ -110,9 +219,14 @@ class _ImportScreenState extends State<ImportScreen> {
   });
 
   void _invalidatePreview() {
+    ++_previewGeneration;
     setState(() {
       _preview = null;
       _selectedIds.clear();
+      _autoSourceStatus.clear();
+      _autoSearchRunning = false;
+      _autoSearchFinished = 0;
+      _autoSearchTotal = 0;
     });
   }
 
@@ -202,7 +316,7 @@ class _ImportScreenState extends State<ImportScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Spotify dibaca sebagai metadata publik (eksperimental). Pilih sumber YouTube per lagu; hasil tidak diganti otomatis dengan cover/remix.',
+                    'Spotify dibaca sebagai metadata publik (eksperimental). Hasil YouTube teratas dipilih otomatis untuk lagu Spotify; periksa judul, kanal, dan durasinya, lalu ganti sumber jika perlu.',
                     style: theme.textTheme.bodySmall,
                   ),
                 ],
@@ -273,6 +387,17 @@ class _ImportScreenState extends State<ImportScreen> {
                 Text(preview.name, style: theme.textTheme.titleLarge),
                 const SizedBox(height: 4),
                 Text('${_selectedIds.length} dari ${preview.tracks.length} lagu dipilih'),
+                if (_autoSearchTotal > 0) ...[
+                  const SizedBox(height: 8),
+                  Text(_autoSearchRunning
+                      ? 'Memilih hasil teratas YouTube: $_autoSearchFinished/$_autoSearchTotal lagu'
+                      : 'Pencarian otomatis selesai untuk $_autoSearchFinished/$_autoSearchTotal lagu',
+                      style: theme.textTheme.bodySmall),
+                  const SizedBox(height: 4),
+                  LinearProgressIndicator(
+                    value: _autoSearchTotal == 0 ? null : _autoSearchFinished / _autoSearchTotal,
+                  ),
+                ],
                 const SizedBox(height: 8),
                 TextButton.icon(
                   onPressed: busy
@@ -305,6 +430,8 @@ class _ImportScreenState extends State<ImportScreen> {
                   const SizedBox(height: 4),
                   Text('Lisensi: ${candidate.license}'),
                   Text('Sumber: ${candidate.source}'),
+                  if (_autoSourceStatus[candidate.id] != null)
+                    Text(_autoSourceLabel(_autoSourceStatus[candidate.id]!)),
                   if (candidate.provider == 'spotify' || candidate.provider == 'youtube')
                     TextButton.icon(onPressed: busy ? null : () => _chooseSource(candidate),
                       icon: const Icon(Icons.search), label: Text(candidate.provider == 'spotify'
@@ -419,6 +546,7 @@ class _ImportTrackRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final downloading = track.status == ImportTrackStatus.downloading;
+    final resolving = track.status == ImportTrackStatus.resolving;
     final verifying = track.status == ImportTrackStatus.verifying;
     final total = track.totalBytes;
     final progress = total != null && total > 0
@@ -439,22 +567,24 @@ class _ImportTrackRow extends StatelessWidget {
                 Text(track.candidate.artist, style: theme.textTheme.bodySmall),
                 const SizedBox(height: 4),
                 Text(_trackStatus(track.status)),
-                if (downloading || verifying) ...[
+                if (resolving || downloading || verifying) ...[
                   const SizedBox(height: 6),
                   LinearProgressIndicator(
-                    value: verifying ? null : progress,
+                    value: resolving || verifying ? null : progress,
                     semanticsLabel: '${_trackStatus(track.status)} ${track.candidate.title}',
-                    semanticsValue: progress == null || verifying
+                    semanticsValue: progress == null || resolving || verifying
                         ? null
                         : '${(progress * 100).round()} persen',
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    total == null
-                        ? '${_bytes(track.receivedBytes)} diterima'
-                        : '${_bytes(track.receivedBytes)} / ${_bytes(total)}',
-                    style: theme.textTheme.bodySmall,
-                  ),
+                  if (!resolving) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      total == null
+                          ? '${_bytes(track.receivedBytes)} diterima'
+                          : '${_bytes(track.receivedBytes)} / ${_bytes(total)}',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
                 ],
                 if (track.error != null) ...[
                   const SizedBox(height: 4),
@@ -483,6 +613,7 @@ String _jobStatus(ImportJobStatus status) => switch (status) {
 
 String _trackStatus(ImportTrackStatus status) => switch (status) {
   ImportTrackStatus.queued => 'Menunggu',
+  ImportTrackStatus.resolving => 'Mencari stream audio YouTube',
   ImportTrackStatus.downloading => 'Mengunduh',
   ImportTrackStatus.verifying => 'Memeriksa audio',
   ImportTrackStatus.completed => 'Tersimpan offline',
@@ -493,12 +624,29 @@ String _trackStatus(ImportTrackStatus status) => switch (status) {
 
 IconData _trackIcon(ImportTrackStatus status) => switch (status) {
   ImportTrackStatus.queued => Icons.schedule,
+  ImportTrackStatus.resolving => Icons.travel_explore,
   ImportTrackStatus.downloading => Icons.downloading,
   ImportTrackStatus.verifying => Icons.fact_check_outlined,
   ImportTrackStatus.completed => Icons.offline_pin_outlined,
   ImportTrackStatus.failed => Icons.error_outline,
   ImportTrackStatus.paused => Icons.pause_circle_outline,
   ImportTrackStatus.cancelled => Icons.cancel_outlined,
+};
+
+enum _AutoSourceStatus {
+  searching,
+  automaticSelected,
+  manuallySelected,
+  noResult,
+  searchFailed,
+}
+
+String _autoSourceLabel(_AutoSourceStatus status) => switch (status) {
+  _AutoSourceStatus.searching => 'Mencari hasil teratas…',
+  _AutoSourceStatus.automaticSelected => 'Hasil teratas dipilih otomatis — periksa sebelum unduh',
+  _AutoSourceStatus.manuallySelected => 'Sumber YouTube dipilih manual',
+  _AutoSourceStatus.noResult => 'Tidak ada hasil; pilih sumber secara manual',
+  _AutoSourceStatus.searchFailed => 'Pencarian gagal; pilih sumber manual atau coba lagi',
 };
 
 String _bytes(int bytes) {

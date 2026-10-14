@@ -2,6 +2,7 @@ enum ImportLinkKind { audio, manifest, spotifyTrack, spotifyPlaylist, youtubeVid
 
 enum ImportTrackStatus {
   queued,
+  resolving,
   downloading,
   verifying,
   completed,

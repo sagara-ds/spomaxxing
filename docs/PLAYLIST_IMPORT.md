@@ -11,7 +11,7 @@ Status: pengguna memilih impor dan unduh langsung di Android, dengan internet sa
 - Memperoleh isi tautan dan mengunduh berkas membutuhkan internet. Yang dapat dijamin offline setelah impor adalah koleksi, pencarian lokal, radio lokal, dan playback.
 - Tautan Spotify mengidentifikasi lagu atau playlist; tautan itu tidak menyediakan berkas audio yang dapat diunduh oleh aplikasi umum.
 - README `spotify-dl` milik SathyaBhat menjelaskan bahwa alatnya mengambil metadata Spotify, kemudian menggunakan `yt-dlp` untuk memperoleh audio dari sumber lain. README spotDL juga menjelaskan pencarian audio melalui YouTube.
-- Hasil pencocokan sumber lain dapat berbeda versi, misalnya live, cover, remix, clean, atau rekaman dengan durasi berbeda. Metadata Spotify tidak membuktikan identitas ataupun izin unduh suatu berkas.
+- Hasil teratas pencarian YouTube dapat berbeda versi, misalnya live, cover, remix, clean, atau rekaman dengan durasi berbeda. Aplikasi boleh memilihnya sebagai kandidat otomatis, tetapi pengguna harus memeriksa dan dapat mengganti sumber sebelum menekan Unduh. Metadata Spotify tidak membuktikan identitas ataupun izin unduh suatu berkas.
 - Tools berbasis Python, `yt-dlp`, dan FFmpeg bukan plugin Flutter yang tinggal dipasang. Membundelnya pada Android memerlukan pengujian kompatibilitas, ukuran paket, lisensi, pembaruan extractor, serta perilaku background tersendiri.
 - Isi playlist privat, radio yang dipersonalisasi, dan playlist milik platform mungkin tidak tersedia melalui akses API yang diberikan kepada aplikasi. Dukungan tiap jenis tautan perlu dibuktikan melalui API resmi; tidak ada janji bahwa setiap tautan Spotify dapat diimpor.
 - Pengunduhan mengikuti izin sumber audio dan ketentuan layanan yang digunakan. Tidak direncanakan ekstraksi cache Spotify, pembukaan DRM, atau akses dengan mengambil kredensial aplikasi lain.
@@ -65,8 +65,8 @@ Jumlah data unduhan mengikuti jumlah lagu, ukuran audio, dan sampul yang diambil
 1. Pengguna menempel tautan; aplikasi memvalidasi host, jenis tautan, serta identitas lagu atau playlist. Parameter berbagi tidak diperlakukan sebagai kredensial.
 2. Provider metadata mengambil satu lagu atau nama playlist dan daftar lagu melalui akses yang didukung, atau pengguna menyediakan manifest daftar lagu sebagai alternatif.
 3. Aplikasi mencocokkan lagu dengan koleksi lokal terlebih dahulu, menggunakan ID/rekaman yang diketahui, judul, artis, dan durasi. Kecocokan meragukan ditampilkan untuk konfirmasi.
-4. Lagu yang belum ada dicocokkan dengan sumber audio yang mengizinkan unduh. Sumber tidak didukung atau lagu tidak tersedia ditandai sebagai gagal/menunggu, bukan diganti diam-diam.
-5. Unduhan yang memenuhi persyaratan dapat langsung masuk antrean. Pencocokan alternatif yang ambigu memerlukan pilihan pengguna.
+4. Lagu yang belum ada dicocokkan dengan sumber audio yang mengizinkan unduh. Hasil teratas YouTube dapat dipilih otomatis sebagai kandidat; pengguna memeriksa atau menggantinya. Sumber tidak didukung atau lagu tidak tersedia ditandai sebagai gagal/menunggu, bukan diganti diam-diam.
+5. Unduhan yang memenuhi persyaratan dapat masuk antrean setelah pengguna mengonfirmasi izin dan menekan Unduh. Pemilihan kandidat otomatis tidak memulai transfer.
 6. Tampilkan kemajuan per lagu dan playlist: sudah lokal, menunggu, mengunduh, memverifikasi, selesai, gagal, atau dibatalkan.
 7. Setelah sebuah berkas selesai dan dapat dibaca pemutar, masukkan ke database dan playlist lokal jika inputnya playlist. Publikasi hasil mengikuti transaksi dan pengelolaan berkas yang aman. Playlist mempertahankan urutan asal dan status lagu yang belum berhasil.
 8. Lagu tunggal atau playlist langsung muncul di Koleksi. Lagu yang selesai dapat diputar selama lagu lain masih diproses; status "tersedia offline" hanya berlaku bagi audio yang sudah tersimpan.
