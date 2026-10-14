@@ -11,13 +11,20 @@ import '../core/radio/radio_mixer.dart';
 import '../data/library_repository.dart';
 import '../data/platform_library.dart';
 import '../features/imports/import_service.dart';
+import '../features/imports/spotdown_source.dart';
 import '../features/imports/youtube_source.dart';
 import '../features/player/player_controller.dart';
 
 /// Coordinates local data; the only network path is an explicit import action.
 class AppController extends ChangeNotifier {
-  AppController({required this.repository, required this.platform,
-    required this.player, required this.importer});
+  AppController({
+    required this.repository,
+    required this.platform,
+    required this.player,
+    required this.importer,
+    required this.youtube,
+    required this.spotdown,
+  });
 
   final LibraryRepository repository;
   final PlatformLibrary platform;
@@ -28,42 +35,97 @@ class AppController extends ChangeNotifier {
   bool busy = false;
   String? error;
   StreamSubscription<ImportJob>? _imports;
-  final YoutubeSource youtube = YoutubeSource();
+  final YoutubeSource youtube;
+  final SpotdownSource spotdown;
 
   static Future<ImportService> createImporter(
-    LibraryRepository repository, PlatformLibrary platform,
+    LibraryRepository repository,
+    PlatformLibrary platform,
+    YoutubeSource youtube,
+    SpotdownSource spotdown,
   ) async => ImportService(
-    metadataPreview: YoutubeSource().preview,
-    resolveYoutubeAudio: YoutubeSource().resolve,
+    metadataPreview: (link) async {
+      if (link.kind == ImportLinkKind.spotifyTrack ||
+          link.kind == ImportLinkKind.spotifyPlaylist) {
+        try {
+          return await spotdown.preview(link);
+        } on SpotdownAuthenticationRequired {
+          rethrow;
+        } on ImportException {
+          return youtube.preview(link);
+        }
+      }
+      return youtube.preview(link);
+    },
+    resolveYoutubeAudio: youtube.resolve,
+    resolveSpotdownAudio: (candidate) async {
+      try {
+        return await spotdown.resolve(candidate);
+      } on SpotdownAuthenticationRequired {
+        rethrow;
+      } on ImportCancelledException {
+        rethrow;
+      } on Object catch (spotdownError, spotdownStack) {
+        try {
+          final results = await youtube.search(
+            '${candidate.title} ${candidate.artist}',
+          );
+          if (results.isEmpty) {
+            Error.throwWithStackTrace(spotdownError, spotdownStack);
+          }
+          return await youtube.resolve(results.first.forTrack(candidate));
+        } on Object {
+          Error.throwWithStackTrace(spotdownError, spotdownStack);
+        }
+      }
+    },
     hasConnection: platform.hasConnection,
-    storageDirectory: () async => Directory(path.join(
-      (await getApplicationSupportDirectory()).path, 'imports')),
+    storageDirectory: () async => Directory(
+      path.join((await getApplicationSupportDirectory()).path, 'imports'),
+    ),
     validateAudio: (uri) => platform.validateAudio(uri.toString()),
     saveLocalTrack: (audio) async {
       final id = 'import:download:${audio.sha256}';
       final previous = (await repository.loadTracks())
-          .where((track) => track.id == id).firstOrNull;
-      await repository.saveTrack(Track(id: id,
-        uri: audio.fileUri.toString(), title: audio.candidate.title,
-        artist: audio.candidate.artist, durationMs: audio.durationMs,
-        tags: previous?.tags ?? {}, isFavorite: previous?.isFavorite ?? false));
+          .where((track) => track.id == id)
+          .firstOrNull;
+      await repository.saveTrack(
+        Track(
+          id: id,
+          uri: audio.fileUri.toString(),
+          title: audio.candidate.title,
+          artist: audio.candidate.artist,
+          durationMs: audio.durationMs,
+          tags: previous?.tags ?? {},
+          isFavorite: previous?.isFavorite ?? false,
+        ),
+      );
       return id;
     },
     savePlaylist: (id, name, ids) async {
       final previous = (await repository.loadPlaylists())
-          .where((playlist) => playlist.id == id).firstOrNull;
-      await repository.savePlaylist(LocalPlaylist(id: id, name: name,
-        trackIds: ids, createdAt: previous?.createdAt));
+          .where((playlist) => playlist.id == id)
+          .firstOrNull;
+      await repository.savePlaylist(
+        LocalPlaylist(
+          id: id,
+          name: name,
+          trackIds: ids,
+          createdAt: previous?.createdAt,
+        ),
+      );
     },
-    loadJobs: () async => (await repository.loadImportJobs())
-        .map(ImportJob.fromJson).toList(),
+    loadJobs: () async =>
+        (await repository.loadImportJobs()).map(ImportJob.fromJson).toList(),
     saveJob: (job) => repository.saveImportJob(job.id, job.toJson()),
   );
 
   Future<void> init() async {
     await reload();
     // Private files can be checked without prompting for broad audio access.
-    for (final track in tracks.where((track) => track.audioUri.scheme == 'file')) {
+    for (final track in tracks.where(
+      (track) => track.audioUri.scheme == 'file',
+    )) {
       final exists = await File.fromUri(track.audioUri).exists();
       if (exists != track.isAvailable) {
         await repository.setAvailability(track.id, exists);
@@ -73,16 +135,24 @@ class AppController extends ChangeNotifier {
     final saved = await repository.loadPlayerSnapshot();
     if (saved != null) await player.restoreSnapshot(saved, tracks);
     await importer.initialize();
-    var completed = importer.jobs.fold<int>(0, (sum, job) => sum + job.completedCount);
+    var completed = importer.jobs.fold<int>(
+      0,
+      (sum, job) => sum + job.completedCount,
+    );
     _imports = importer.changes.listen((job) {
-      final count = importer.jobs.fold<int>(0, (sum, job) => sum + job.completedCount);
+      final count = importer.jobs.fold<int>(
+        0,
+        (sum, job) => sum + job.completedCount,
+      );
       if (count == completed && job.isActive) return;
       completed = count;
       // Reload publishes only fully validated local files, never .part files.
-      unawaited(reload().catchError((Object exception) {
-        error = exception.toString();
-        notifyListeners();
-      }));
+      unawaited(
+        reload().catchError((Object exception) {
+          error = exception.toString();
+          notifyListeners();
+        }),
+      );
     });
   }
 
@@ -97,13 +167,16 @@ class AppController extends ChangeNotifier {
     busy = true;
     error = null;
     notifyListeners();
-    try { await action(); }
-    catch (exception) {
+    try {
+      await action();
+    } catch (exception) {
       error = exception is PlatformException
           ? exception.message ?? 'Audio belum dapat diakses. Coba lagi.'
           : 'Koleksi belum dapat diperbarui. Coba lagi.';
+    } finally {
+      busy = false;
+      notifyListeners();
     }
-    finally { busy = false; notifyListeners(); }
   }
 
   Future<void> pickAudio() => _work(() async {
@@ -126,20 +199,30 @@ class AppController extends ChangeNotifier {
     await reload();
   }
 
-  Future<void> playTracks(Iterable<Track> source,
-      {int startIndex = 0, bool shuffle = false}) async {
+  Future<void> playTracks(
+    Iterable<Track> source, {
+    int startIndex = 0,
+    bool shuffle = false,
+  }) async {
     final original = source.toList();
     if (original.isEmpty) return;
     final selected = original[startIndex.clamp(0, original.length - 1).toInt()];
     final available = original.where((track) => track.isAvailable).toList();
     if (available.isEmpty) return;
     final index = available.indexWhere((track) => track.id == selected.id);
-    await player.playTracks(available,
-      startIndex: index < 0 ? 0 : index, shuffle: shuffle);
+    await player.playTracks(
+      available,
+      startIndex: index < 0 ? 0 : index,
+      shuffle: shuffle,
+    );
   }
 
-  RadioMix radio(String mood, {Track? seed}) => RadioMixer.create(tracks,
-    mood: mood, seedTrack: seed, seed: DateTime.now().microsecondsSinceEpoch);
+  RadioMix radio(String mood, {Track? seed}) => RadioMixer.create(
+    tracks,
+    mood: mood,
+    seedTrack: seed,
+    seed: DateTime.now().microsecondsSinceEpoch,
+  );
 
   Future<RadioMix> playRadio(String mood, {Track? seed}) async {
     final mix = radio(mood, seed: seed);
@@ -150,16 +233,21 @@ class AppController extends ChangeNotifier {
   Future<void> saveRadio(String mood, {String? name}) async {
     final mix = radio(mood);
     if (mix.isEmpty) return;
-    await repository.savePlaylist(LocalPlaylist(
-      id: 'playlist:mix:${DateTime.now().microsecondsSinceEpoch}',
-      name: name ?? 'Mix $mood', trackIds: mix.tracks.map((track) => track.id).toList()));
+    await repository.savePlaylist(
+      LocalPlaylist(
+        id: 'playlist:mix:${DateTime.now().microsecondsSinceEpoch}',
+        name: name ?? 'Mix $mood',
+        trackIds: mix.tracks.map((track) => track.id).toList(),
+      ),
+    );
     await reload();
   }
 
   Future<void> playPlaylist(LocalPlaylist playlist) async {
     final catalogue = {for (final track in tracks) track.id: track};
-    await playTracks(playlist.trackIds.map((id) => catalogue[id])
-        .whereType<Track>());
+    await playTracks(
+      playlist.trackIds.map((id) => catalogue[id]).whereType<Track>(),
+    );
   }
 
   Future<ImportPreview> previewImport(String link, {bool permission = false}) =>
@@ -178,6 +266,8 @@ class AppController extends ChangeNotifier {
   @override
   void dispose() {
     unawaited(_imports?.cancel());
+    youtube.close();
+    spotdown.close();
     player.dispose();
     super.dispose();
   }

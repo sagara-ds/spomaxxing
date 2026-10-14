@@ -1,5 +1,11 @@
 # Mesin unduhan 0.2.0
 
+## Spotdown utama
+
+Impor Spotify menggunakan endpoint web internal Spotdown sebagai jalur utama. Aplikasi membuka halaman resmi `spotdown.org` dalam WebView agar pengguna menyelesaikan Cloudflare Turnstile secara normal, lalu menyimpan token sesi hanya di memori. Tautan Spotify dikirim ke Spotdown untuk mengambil metadata dan tautan MP3 sementara. Token serta tautan unduhan sementara tidak disimpan ke database.
+
+Integrasi ini bukan API resmi dan dapat berhenti bila Spotdown mengubah endpoint, skema respons, Turnstile, atau kebijakan akses. HTTP 403 meminta autentikasi ulang, HTTP 429 menampilkan batas layanan, dan semua hasil tetap melewati batas ukuran, validasi TLS/redirect, file `.part`, pemeriksaan decoder Android, dan hash lokal. Jika Spotdown gagal setelah sesi terbentuk, aplikasi mencoba pencarian dan resolver YouTube lokal sebagai fallback.
+
 Mesin bekerja langsung di Android dengan Dart, memakai `youtube_explode_dart` 3.1.0 (BSD-3-Clause). Tidak ada server tambahan, API key pengguna, Python, FFmpeg, login YouTube, atau pengambilan cookie akun. Lisensi dependency dapat dibuka melalui Pengaturan.
 
 ## Alur pengguna

@@ -138,6 +138,8 @@ ImportPreview parseSpotifyEmbed(String html, ImportLink link) {
 /// Resolves metadata/search and fresh streams only when the user requests them.
 /// No YouTube credentials, external server, Python, or FFmpeg are bundled.
 class YoutubeSource {
+  void close() {}
+
   Future<List<YoutubeResult>> search(String query) async {
     if (query.trim().isEmpty || query.length > 500)
       throw const ImportException(
